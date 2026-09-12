@@ -73,17 +73,17 @@ def _get_openai_client():
 
 # ── Core dispatcher ──────────────────────────────────────────────────────────
 
-def _ask(system: str, user: str, max_tokens: int | None = None) -> str:
+def _ask(system: str, user: str, max_tokens: int | None = None, json_mode: bool = False) -> str:
     """Single-turn call, retried once on a transient provider error."""
     try:
-        return _ask_once(system, user, max_tokens)
+        return _ask_once(system, user, max_tokens, json_mode)
     except Exception as e:
         status = getattr(e, "status_code", None)
         if status not in _TRANSIENT:
             raise
         time.sleep(0.5)
         try:
-            return _ask_once(system, user, max_tokens)
+            return _ask_once(system, user, max_tokens, json_mode)
         except Exception as e2:
             status = getattr(e2, "status_code", status)
             raise ProviderUnavailable(
@@ -94,7 +94,7 @@ def _ask(system: str, user: str, max_tokens: int | None = None) -> str:
             ) from e2
 
 
-def _ask_once(system: str, user: str, max_tokens: int | None = None) -> str:
+def _ask_once(system: str, user: str, max_tokens: int | None = None, json_mode: bool = False) -> str:
     """One attempt, routed to the configured provider."""
     tokens = max_tokens or int(os.getenv("LLM_MAX_TOKENS", "2048"))
 
@@ -118,7 +118,7 @@ def _ask_once(system: str, user: str, max_tokens: int | None = None) -> str:
     else:
         model = os.getenv("OLLAMA_MODEL", "qwen2.5-coder:7b")
 
-    response = client.chat.completions.create(
+    kwargs: dict = dict(
         model=model,
         max_tokens=tokens,
         messages=[
@@ -126,6 +126,10 @@ def _ask_once(system: str, user: str, max_tokens: int | None = None) -> str:
             {"role": "user", "content": user},
         ],
     )
+    if json_mode:
+        kwargs["response_format"] = {"type": "json_object"}
+
+    response = client.chat.completions.create(**kwargs)
 
     choice = response.choices[0]
     text = choice.message.content
@@ -176,13 +180,14 @@ def _parse_json(raw: str) -> dict:
 
 
 def _ask_json(system: str, user: str, max_tokens: int | None = None) -> dict:
-    """Ask for JSON; retry once with a stricter instruction if it returns prose."""
-    raw = _ask(system, user, max_tokens)
+    """Ask for JSON with json_mode enabled; retry without it if the model rejects it."""
     try:
+        raw = _ask(system, user, max_tokens, json_mode=True)
         return _parse_json(raw)
     except (json.JSONDecodeError, IndexError, ValueError):
+        # json_mode parse still failed — retry with a stricter prompt, no mode flag
         retry_system = system + "\n\nCRITICAL: output raw JSON only. No prose, no markdown fences."
-        raw = _ask(retry_system, user, max_tokens)
+        raw = _ask(retry_system, user, max_tokens, json_mode=False)
         return _parse_json(raw)
 
 

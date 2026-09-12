@@ -21,7 +21,6 @@ import {
   STAGE_ORDER,
   type RespondResponse,
 } from "@/lib/api";
-import { generateChallenge, type Difficulty } from "@/services/challengeService";
 import ReactMarkdown from "react-markdown";
 
 type Phase = "setup" | "tutoring" | "done";
@@ -54,8 +53,6 @@ export default function Home() {
   const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [duration, setDuration] = useState<string | null>(null);
-  const [challengeBusy, setChallengeBusy] = useState(false);
-  const [challengeDifficulty, setChallengeDifficulty] = useState<Difficulty>("easy");
 
   const canExecute = language === "python";
   const hasRun = output !== null;
@@ -255,43 +252,6 @@ export default function Home() {
               ))}
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="eyebrow text-muted-dim">or generate:</span>
-                {(["easy", "medium", "hard"] as const).map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setChallengeDifficulty(d)}
-                    className={`rounded px-2.5 py-1 font-mono text-xs ring-1 ring-inset transition ${
-                      challengeDifficulty === d
-                        ? "bg-volt/15 text-volt ring-volt-dim"
-                        : "text-muted ring-ink-line-2 hover:text-paper"
-                    }`}
-                  >
-                    {d}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  disabled={challengeBusy}
-                  onClick={async () => {
-                    setChallengeBusy(true);
-                    setError(null);
-                    try {
-                      const c = await generateChallenge(language, challengeDifficulty);
-                      setCode(c.buggy_code);
-                      setOutput(null);
-                    } catch (e) {
-                      setError(e instanceof Error ? e.message : "Could not generate challenge.");
-                    } finally {
-                      setChallengeBusy(false);
-                    }
-                  }}
-                  className="rounded bg-paper/[0.07] px-3 py-1 font-mono text-xs text-paper ring-1 ring-inset ring-ink-line-2 transition hover:bg-volt/15 hover:text-volt hover:ring-volt-dim disabled:opacity-40"
-                >
-                  {challengeBusy ? "generating…" : "▸ Generate"}
-                </button>
-              </div>
             </div>
             <EditorPane
               code={code}
