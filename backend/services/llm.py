@@ -18,7 +18,7 @@ from utils.prompts import (
     CHALLENGE_EVALUATE_SYSTEM, CHALLENGE_EVALUATE_PROMPT,
 )
 
-_PROVIDER = os.getenv("LLM_PROVIDER", "claude").lower()
+_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter").lower()
 
 # ── Lazy client cache (one instance per provider) ────────────────────────────
 
@@ -58,7 +58,7 @@ def _ask(system: str, user: str) -> str:
     if _PROVIDER == "claude":
         client = _get_claude_client()
         msg = client.messages.create(
-            model=os.getenv("CLAUDE_MODEL", "claude-opus-4-6"),
+            model=os.getenv("CLAUDE_MODEL", "claude-sonnet-5"),
             max_tokens=1024,
             system=system,
             messages=[{"role": "user", "content": user}],
@@ -68,7 +68,7 @@ def _ask(system: str, user: str) -> str:
     # OpenRouter and Ollama share the OpenAI-compatible format
     client = _get_openai_client()
     if _PROVIDER == "openrouter":
-        model = os.getenv("OPENROUTER_MODEL", "qwen/qwen-2.5-coder-32b-instruct")
+        model = os.getenv("OPENROUTER_MODEL", "inclusionai/ling-3.0-flash-vl:free")
     else:
         model = os.getenv("OLLAMA_MODEL", "qwen2.5-coder:7b")
 
