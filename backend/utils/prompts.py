@@ -31,7 +31,8 @@ Return JSON with this exact shape:
   }}
 }}
 
-CRITICAL: every hint must narrow toward the single root_cause above. Do not introduce alternative hypotheses (scope, return value, type) unless root_cause is about those things.\
+CRITICAL: every hint must narrow toward the single root_cause above. Do not introduce alternative hypotheses (scope, return value, type) unless root_cause is about those things.
+{exec_note}\
 """
 
 EVALUATOR_SYSTEM = """\

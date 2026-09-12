@@ -188,11 +188,25 @@ def _ask_json(system: str, user: str, max_tokens: int | None = None) -> dict:
 
 # ── Public functions (identical interface regardless of provider) ─────────────
 
+_EXECUTABLE = {"python", "py", "python3"}
+
 def diagnose(code: str, language: str, question: str) -> dict:
+    can_run = language.lower() in _EXECUTABLE
+    exec_note = (
+        ""
+        if can_run
+        else (
+            f"\nNOTE: {language} code cannot be executed in this environment. "
+            "For the 'observation' hint, do NOT say 'run' or 'print'. Instead, "
+            "ask the student to mentally trace a specific expression and predict "
+            "what value it holds at that point in the program."
+        )
+    )
     prompt = DIAGNOSIS_PROMPT.format(
         language=language,
         code=code,
         question=question or "I'm not sure what's wrong.",
+        exec_note=exec_note,
     )
     return _ask_json(DIAGNOSIS_SYSTEM, prompt, max_tokens=900)
 

@@ -12,7 +12,7 @@ import {
 import { LadderProgress } from "@/components/LadderProgress";
 import { BranchBanner } from "@/components/BranchBanner";
 import { Quiz } from "@/components/Quiz";
-import { STARTER } from "@/lib/examples";
+import { STARTERS, STARTER } from "@/lib/examples";
 import {
   ApiError,
   diagnose,
@@ -27,7 +27,7 @@ type Phase = "setup" | "tutoring" | "done";
 
 export default function Home() {
   const [language, setLanguage] = useState("python");
-  const [code, setCode] = useState(STARTER);
+  const [code, setCode] = useState(STARTERS["python"]);
   const [question, setQuestion] = useState("");
   const [expected, setExpected] = useState("");
 
@@ -48,6 +48,7 @@ export default function Home() {
   const [expired, setExpired] = useState(false);
   const [providerBusy, setProviderBusy] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
+  const [thread, setThread] = useState<{ role: "bot" | "user"; content: string }[]>([]);
 
   const canExecute = language === "python";
   const hasRun = output !== null;
@@ -105,6 +106,7 @@ export default function Home() {
       setPrompt(d.first_message);
       setLast(null);
       setRunThis(null);
+      setThread([]);
       setPhase("tutoring");
     } catch (e) {
       if (e instanceof ApiError && e.status === 503) setProviderBusy(true);
@@ -117,6 +119,8 @@ export default function Home() {
   async function submit(iDontKnow: boolean) {
     if (!sessionId) return;
     if (!iDontKnow && !answer.trim()) return;
+    const prevPrompt = prompt;
+    const userText = iDontKnow ? "I don't know" : answer.trim();
     setBusy(true);
     setError(null);
     setProviderBusy(false);
@@ -126,6 +130,12 @@ export default function Home() {
         iDontKnow ? "" : answer.trim(),
         iDontKnow,
       );
+      setThread((prev) => [
+        ...prev,
+        { role: "bot", content: prevPrompt },
+        { role: "user", content: userText },
+        { role: "bot", content: r.message },
+      ]);
       setLast(r);
       setStageIndex(r.stage_index);
       setRunThis(r.run_this);
@@ -168,6 +178,7 @@ export default function Home() {
     setError(null);
     setExpired(false);
     setProviderBusy(false);
+    setThread([]);
   }
 
   const banner = error ? (
@@ -211,7 +222,7 @@ export default function Home() {
                 <button
                   key={lang}
                   type="button"
-                  onClick={() => { setLanguage(lang); setOutput(null); }}
+                  onClick={() => { setLanguage(lang); setCode(STARTERS[lang] ?? STARTER); setOutput(null); }}
                   className={`rounded px-3 py-1 font-mono text-xs ring-1 ring-inset transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt ${
                     language === lang
                       ? "bg-volt/20 text-volt ring-volt-dim"
@@ -378,6 +389,23 @@ export default function Home() {
                 message={last.message}
                 saidIDontKnow={last.said_i_dont_know}
               />
+            )}
+
+            {thread.length > 0 && (
+              <div className="flex max-h-56 flex-col gap-3 overflow-y-auto rounded-xl border border-ink-line bg-ink/20 p-4">
+                {thread.map((msg, i) => (
+                  <p
+                    key={i}
+                    className={`text-[0.85rem] leading-relaxed ${
+                      msg.role === "bot"
+                        ? "text-paper/55"
+                        : "border-l-2 border-volt/40 pl-3 text-volt/65"
+                    }`}
+                  >
+                    {msg.content}
+                  </p>
+                ))}
+              </div>
             )}
 
             <div className="rounded-2xl border border-ink-line bg-ink/40 p-6 backdrop-blur-sm">
