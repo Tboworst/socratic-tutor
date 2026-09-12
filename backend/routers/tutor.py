@@ -267,6 +267,7 @@ def respond(req: RespondRequest):
             descents=session["descents"],
             attempt=session["attempt"],
             said_i_dont_know=req.i_dont_know,
+            correct_answer=diag.get("correct_answer"),
         )
 
     # ---- next rung ---------------------------------------------------------

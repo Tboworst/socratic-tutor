@@ -21,6 +21,7 @@ import {
   STAGE_ORDER,
   type RespondResponse,
 } from "@/lib/api";
+import { generateChallenge, type Difficulty } from "@/services/challengeService";
 import ReactMarkdown from "react-markdown";
 
 type Phase = "setup" | "tutoring" | "done";
@@ -49,6 +50,12 @@ export default function Home() {
   const [providerBusy, setProviderBusy] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
   const [thread, setThread] = useState<{ role: "bot" | "user"; content: string }[]>([]);
+  const [bugType, setBugType] = useState<string | null>(null);
+  const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [duration, setDuration] = useState<string | null>(null);
+  const [challengeBusy, setChallengeBusy] = useState(false);
+  const [challengeDifficulty, setChallengeDifficulty] = useState<Difficulty>("easy");
 
   const canExecute = language === "python";
   const hasRun = output !== null;
@@ -107,6 +114,10 @@ export default function Home() {
       setLast(null);
       setRunThis(null);
       setThread([]);
+      setBugType(d.bug_type ?? null);
+      setCorrectAnswer(null);
+      setStartTime(Date.now());
+      setDuration(null);
       setPhase("tutoring");
     } catch (e) {
       if (e instanceof ApiError && e.status === 503) setProviderBusy(true);
@@ -142,6 +153,11 @@ export default function Home() {
       setAnswer("");
       if (r.is_complete) {
         setSummary(r.summary ?? "");
+        setCorrectAnswer(r.correct_answer ?? null);
+        if (startTime) {
+          const secs = Math.round((Date.now() - startTime) / 1000);
+          setDuration(secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m ${secs % 60}s`);
+        }
         setPhase("done");
       } else if (r.question) {
         setPrompt(r.question);
@@ -179,6 +195,10 @@ export default function Home() {
     setExpired(false);
     setProviderBusy(false);
     setThread([]);
+    setBugType(null);
+    setCorrectAnswer(null);
+    setStartTime(null);
+    setDuration(null);
   }
 
   const banner = error ? (
@@ -217,8 +237,9 @@ export default function Home() {
             title="Paste the code that is misbehaving"
             hint="keep it small"
           >
-            <div className="flex gap-2 flex-wrap">
-              {(["python", "javascript", "java", "cpp"] as const).map((lang) => (
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex gap-2 flex-wrap">
+                {(["python", "javascript", "java", "cpp"] as const).map((lang) => (
                 <button
                   key={lang}
                   type="button"
@@ -232,6 +253,45 @@ export default function Home() {
                   {lang === "cpp" ? "C++" : lang.charAt(0).toUpperCase() + lang.slice(1)}
                 </button>
               ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="eyebrow text-muted-dim">or generate:</span>
+                {(["easy", "medium", "hard"] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setChallengeDifficulty(d)}
+                    className={`rounded px-2.5 py-1 font-mono text-xs ring-1 ring-inset transition ${
+                      challengeDifficulty === d
+                        ? "bg-volt/15 text-volt ring-volt-dim"
+                        : "text-muted ring-ink-line-2 hover:text-paper"
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  disabled={challengeBusy}
+                  onClick={async () => {
+                    setChallengeBusy(true);
+                    setError(null);
+                    try {
+                      const c = await generateChallenge(language, challengeDifficulty);
+                      setCode(c.buggy_code);
+                      setOutput(null);
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : "Could not generate challenge.");
+                    } finally {
+                      setChallengeBusy(false);
+                    }
+                  }}
+                  className="rounded bg-paper/[0.07] px-3 py-1 font-mono text-xs text-paper ring-1 ring-inset ring-ink-line-2 transition hover:bg-volt/15 hover:text-volt hover:ring-volt-dim disabled:opacity-40"
+                >
+                  {challengeBusy ? "generating…" : "▸ Generate"}
+                </button>
+              </div>
             </div>
             <EditorPane
               code={code}
@@ -462,9 +522,21 @@ export default function Home() {
           </div>
         ) : (
           <div className="flex flex-col gap-8">
-            <span className="eyebrow text-volt">
-              <span className="text-muted-dim">//</span> Session report
-            </span>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="eyebrow text-volt">
+                <span className="text-muted-dim">//</span> Session report
+              </span>
+              {bugType && (
+                <span className="rounded-full border border-volt/30 bg-volt/10 px-3 py-0.5 font-mono text-[0.75rem] text-volt">
+                  {bugType}
+                </span>
+              )}
+              {duration && (
+                <span className="rounded-full border border-ink-line bg-ink/30 px-3 py-0.5 font-mono text-[0.75rem] text-muted">
+                  ⏱ {duration}
+                </span>
+              )}
+            </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
               <Stat
@@ -478,6 +550,15 @@ export default function Home() {
                 tone={last?.reasoning_correct ? "good" : "warn"}
               />
             </div>
+
+            {correctAnswer && (
+              <div className="rounded-xl border border-good/30 bg-good/[0.05] px-5 py-4">
+                <span className="eyebrow text-good/80">The fix</span>
+                <p className="mt-2 text-[0.92rem] leading-relaxed text-paper/80">
+                  {correctAnswer}
+                </p>
+              </div>
+            )}
 
             <div className="rounded-2xl border border-ink-line bg-ink/40 p-6 backdrop-blur-sm">
               <div className="max-w-[74ch] text-[0.97rem] leading-relaxed text-paper/90">

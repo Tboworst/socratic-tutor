@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import { python } from "@codemirror/lang-python";
 import { javascript } from "@codemirror/lang-javascript";
@@ -58,6 +59,13 @@ export function EditorPane({
   height?: string;
 }) {
   const fileLabel = FILE_LABEL[language] ?? "main.txt";
+  const [copied, setCopied] = useState(false);
+  function handleCopy() {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
@@ -71,14 +79,23 @@ export function EditorPane({
           )}
           {drifted && <span className="eyebrow text-warn/80">edited since diagnosis</span>}
         </div>
-        <button
-          type="button"
-          onClick={onRun}
-          disabled={running}
-          className="rounded bg-paper/[0.07] px-3.5 py-1.5 font-mono text-xs text-paper ring-1 ring-inset ring-ink-line-2 transition-colors hover:bg-volt/15 hover:text-volt hover:ring-volt-dim disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
-        >
-          {running ? "running…" : "▸ Run"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="rounded bg-paper/[0.07] px-3 py-1.5 font-mono text-xs text-muted ring-1 ring-inset ring-ink-line-2 transition-colors hover:text-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
+          >
+            {copied ? "copied!" : "copy"}
+          </button>
+          <button
+            type="button"
+            onClick={onRun}
+            disabled={running}
+            className="rounded bg-paper/[0.07] px-3.5 py-1.5 font-mono text-xs text-paper ring-1 ring-inset ring-ink-line-2 transition-colors hover:bg-volt/15 hover:text-volt hover:ring-volt-dim disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
+          >
+            {running ? "running…" : "▸ Run"}
+          </button>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded border border-ink-line">

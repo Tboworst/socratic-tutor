@@ -72,6 +72,7 @@ class RespondResponse(BaseModel):
     attempt: int = 1           # which try this is at the current rung
     said_i_dont_know: bool = False
     run_this: Optional[str] = None   # observation rung: snippet to execute
+    correct_answer: Optional[str] = None  # revealed when session is complete
 
 
 # --- Quiz ---

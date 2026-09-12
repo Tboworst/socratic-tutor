@@ -54,6 +54,7 @@ export interface RespondResponse {
   attempt: number; // capped at 3, then the tutor descends
   said_i_dont_know: boolean;
   run_this: string | null;
+  correct_answer: string | null;
 }
 
 /* --- Quiz: the "prove it stuck" step, on the session's own concept --- */
