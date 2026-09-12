@@ -58,8 +58,33 @@ export interface RespondResponse {
   is_guessing: boolean;
   branch: Branch;
   descents: number;
+  attempt: number;  // capped at 3, then the tutor descends
   said_i_dont_know: boolean;
   run_this: string | null;
+}
+
+/* --- Quiz: the "prove it stuck" step, on the session's own concept --- */
+
+export interface MCOption {
+  label: string; // "A" | "B" | "C" | "D"
+  text: string;
+}
+
+export interface MCQuestion {
+  id: string;
+  prompt: string;
+  options: MCOption[];
+  // NOTE: the answer and explanation ship with the question, so both are
+  // readable in devtools. Fine for self-checking, not for grading.
+  correct_label: string;
+  explanation: string;
+}
+
+export interface QuizGenerateResponse {
+  quiz_id: string;
+  quiz_type: "mc" | "code_fix";
+  mc_questions: MCQuestion[] | null;
+  code_fix_questions: unknown[] | null;
 }
 
 export interface ExecuteResponse {
@@ -68,7 +93,15 @@ export interface ExecuteResponse {
   exit_code: number;
 }
 
-class ApiError extends Error {}
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
 
 async function post<T>(path: string, body: unknown): Promise<T> {
   let res: Response;
@@ -87,6 +120,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
     const detail = await res.text().catch(() => "");
     throw new ApiError(
       detail ? `${res.status} — ${detail.slice(0, 200)}` : `Request failed (${res.status})`,
+      res.status,
     );
   }
   return (await res.json()) as T;
@@ -101,6 +135,15 @@ export function respond(sessionId: string, answer: string, iDontKnow = false) {
     session_id: sessionId,
     user_answer: answer,
     i_dont_know: iDontKnow,
+  });
+}
+
+export function generateQuiz(code: string, sessionId: string | null) {
+  return post<QuizGenerateResponse>("/api/quiz/generate", {
+    code,
+    language: "python",
+    quiz_type: "mc",
+    session_id: sessionId,
   });
 }
 

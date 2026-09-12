@@ -1,22 +1,25 @@
 from fastapi import APIRouter, HTTPException
+
 from models.schemas import ExecuteRequest, ExecuteResponse
-from services import piston
-import httpx
+from services import runner
 
 router = APIRouter()
 
+# Was services.piston; see services/runner.py for why it changed.
+
 
 @router.post("/", response_model=ExecuteResponse)
-async def execute_code(req: ExecuteRequest):
-    """Run code via the Piston API and return stdout/stderr/exit_code."""
+def execute_code(req: ExecuteRequest):
+    """
+    Run a snippet locally and return stdout/stderr/exit_code.
+
+    Sync `def` on purpose: FastAPI then runs it in a threadpool, so a snippet
+    that blocks for its whole timeout doesn't stall the event loop.
+    """
     try:
-        result = await piston.execute(
-            code=req.code,
-            language=req.language,
-            stdin=req.stdin or "",
+        return ExecuteResponse(**runner.execute(req.code, req.language, req.stdin or ""))
+    except runner.UnsupportedLanguage:
+        raise HTTPException(
+            status_code=400,
+            detail=f"This tutor only runs Python, not {req.language!r}.",
         )
-        return ExecuteResponse(**result)
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=502, detail=f"Piston API error: {e.response.text}")
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=503, detail=f"Could not reach execution engine: {str(e)}")

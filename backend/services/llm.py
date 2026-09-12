@@ -8,6 +8,7 @@ Set LLM_PROVIDER in .env to switch backends:
 """
 import json
 import os
+import time
 
 from utils.prompts import (
     DIAGNOSIS_SYSTEM, DIAGNOSIS_PROMPT,
@@ -19,6 +20,25 @@ from utils.prompts import (
 )
 
 _PROVIDER = os.getenv("LLM_PROVIDER", "openrouter").lower()
+
+# --- What changed here, and why -------------------------------------------
+# * _ask retries once on a transient provider error and falls back to the
+#   reasoning/refusal fields, which is where some models put their output
+#   while leaving content null. A null content used to surface three frames
+#   later as "AttributeError: 'NoneType' has no attribute 'strip'".
+# * Malformed JSON is retried once with a stricter instruction, and parsed
+#   from the first { to the last } as a last resort.
+# * Default model IDs updated: claude-opus-4-6 no longer exists, and the
+#   OpenRouter fallback named a paid model.
+# --------------------------------------------------------------------------
+
+# Free pools upstream of OpenRouter saturate without warning, so a 429 there
+# is usually not our own quota.
+_TRANSIENT = {429, 500, 502, 503, 529}
+
+
+class ProviderUnavailable(Exception):
+    """The provider refused the call for a reason that is not our bug."""
 
 # ── Lazy client cache (one instance per provider) ────────────────────────────
 
@@ -54,7 +74,28 @@ def _get_openai_client():
 # ── Core dispatcher ──────────────────────────────────────────────────────────
 
 def _ask(system: str, user: str) -> str:
-    """Single-turn LLM call. Routes to the configured provider."""
+    """Single-turn call, retried once on a transient provider error."""
+    try:
+        return _ask_once(system, user)
+    except Exception as e:
+        status = getattr(e, "status_code", None)
+        if status not in _TRANSIENT:
+            raise
+        time.sleep(2)
+        try:
+            return _ask_once(system, user)
+        except Exception as e2:
+            status = getattr(e2, "status_code", status)
+            raise ProviderUnavailable(
+                f"The model provider is refusing calls right now (HTTP {status}). "
+                "On a free model this is usually the shared upstream pool being "
+                "saturated rather than your own quota. Retry in a moment, switch "
+                "OPENROUTER_MODEL, or set LLM_PROVIDER=claude with an API key."
+            ) from e2
+
+
+def _ask_once(system: str, user: str) -> str:
+    """One attempt, routed to the configured provider."""
     if _PROVIDER == "claude":
         client = _get_claude_client()
         msg = client.messages.create(
@@ -87,9 +128,7 @@ def _ask(system: str, user: str) -> str:
     choice = response.choices[0]
     text = choice.message.content
 
-    # Reasoning models leave content null and put their output in a separate
-    # field; some providers return a refusal instead. Without this, a null
-    # content surfaced as an opaque AttributeError two frames later.
+    # Reasoning models leave content null and put the text elsewhere.
     if not text:
         text = getattr(choice.message, "reasoning", None) or getattr(
             choice.message, "refusal", None
@@ -111,12 +150,8 @@ def _ask(system: str, user: str) -> str:
 
 
 def _parse_json(raw: str) -> dict:
-    """
-    Strip markdown fences, then parse JSON.
-
-    Weaker models like to wrap the object in a sentence ("Here is the JSON:"),
-    so as a last resort we take everything between the first { and the last }.
-    """
+    """Strip fences, then parse. Falls back to the span between { and }, since
+    weaker models like to wrap the object in a sentence."""
     if not isinstance(raw, str) or not raw.strip():
         raise ValueError(f"expected a JSON string, got {raw!r}")
 
@@ -139,11 +174,7 @@ def _parse_json(raw: str) -> dict:
 
 
 def _ask_json(system: str, user: str) -> dict:
-    """
-    Ask for JSON, and retry ONCE with a stricter instruction if the model
-    returns prose. A malformed response used to 500 the whole request --
-    the fastest way to lose a live demo.
-    """
+    """Ask for JSON; retry once with a stricter instruction if it returns prose."""
     raw = _ask(system, user)
     try:
         return _parse_json(raw)

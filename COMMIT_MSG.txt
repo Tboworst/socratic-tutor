@@ -1,0 +1,44 @@
+feat: make the tutor actually runnable end to end
+
+Three things stood between the app and a first complete session.
+
+Code execution: the public Piston instance went whitelist-only on
+2026-02-15, so the only keyless hosted runner is gone. It failed as soon as
+the student edited a snippet, because the seeded examples serve their
+verified output from memory and never hit the network. services/runner.py
+replaces it with a local subprocess -- python -I, a 5s timeout, capped
+output, no key, no quota, works offline. It executes untrusted code with no
+sandbox, which is fine on the student's own machine and is not fine on a
+shared host; the README says so, and services/piston.py is marked retired
+rather than left as a trap.
+
+Sessions surviving a restart: a mid-session `uvicorn --reload` wiped the
+in-memory store and the next answer surfaced as a raw 404. Sessions now
+mirror to a single .sessions.json and reload at import -- not a database,
+just enough that a file save during development does not discard a session
+the student is halfway through. On the client, ApiError carries the HTTP
+status so a 404 gets its own amber recovery banner and a Start over button
+instead of dumping the JSON at the reader.
+
+Two display bugs the first screenshots exposed: the output panel kept
+showing the previous run after the code was edited, which is a lie the
+student would reason from -- it is now invalidated on the first keystroke;
+and the example rows compared only first lines, so the mutable-default
+example read "prints ['apple'] - wanted ['apple']", hiding the entire point.
+
+Plus test_ladder.py: 59 checks over the state machine with every LLM entry
+point stubbed, so the ladder is verifiable with no key, no network and no
+quota spent -- the four branches, the "I don't know" path, the forced
+descent on repeat guessing, termination, the 404 and the restore.
+
+It earned its place immediately. An earlier edit had dedented the terminal
+`return` out of its `if`, so every answer would have ended the session with
+is_complete=True; python -m py_compile was perfectly happy with it. It also
+corrected the guess rule: a blind wrong guess descends on the first try,
+because descending IS the extra help, and the counter only matters on nudge
+and counter_example where the student would otherwise stay pinned.
+
+Verified with test_ladder.py, tsc --noEmit and next build.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016TPLddij5U1G48cKbzMUeg

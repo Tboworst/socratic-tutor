@@ -1,3 +1,8 @@
+"""
+RETIRED — not wired into any route. The public instance went whitelist-only on
+2026-02-15; services/runner.py replaced it. Keep it if our plan is to
+self-host Piston, and don't point it back at emkc.org.
+"""
 import httpx
 
 PISTON_URL = "https://emkc.org/api/v2/piston"

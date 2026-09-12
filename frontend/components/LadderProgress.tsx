@@ -2,11 +2,7 @@
 
 import { STAGE_ORDER, STAGE_LABEL, type SocraticStage } from "@/lib/api";
 
-/**
- * The rung counter. Always visible, and that is the point: difficulty does not
- * frustrate people, open-ended interrogation does. Seeing "3 of 5" tells the
- * student this ends.
- */
+/** The rung counter. Always visible, so the student can see that this ends. */
 export function LadderProgress({
   stageIndex,
   descents,

@@ -1,4 +1,17 @@
+# --- What changed here, and why -------------------------------------------
+# * respond() now reports answer_correct / reasoning_correct / is_guessing /
+#   branch / descents / attempt as separate fields, and returns feedback and
+#   the next question separately, so the UI can render the four outcomes
+#   distinctly instead of one blob of text.
+# * i_dont_know skips the LLM call and descends a rung.
+# * ATTEMPT_LIMIT stops a rung from trapping the student forever.
+# * Sessions mirror to .sessions.json so --reload doesn't discard them.
+# --------------------------------------------------------------------------
+
+import json
 import uuid
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException
 from models.schemas import (
     DiagnoseRequest, DiagnoseResponse,
@@ -9,13 +22,51 @@ from services import llm
 
 router = APIRouter()
 
+
+
 # In-memory session store  {session_id -> SessionState dict}
 # Fine for hackathon demo; swap for Redis/DB in production
 _sessions: dict[str, dict] = {}
 
-# Two blind guesses in a row and we stop making the student flail.
-GUESS_LIMIT = 2
+GUESS_LIMIT = 2    # two blind guesses in a row -> descend
+ATTEMPT_LIMIT = 3  # two retries on a rung -> descend, so no rung can trap anyone
 LAST_INDEX = len(STAGE_ORDER) - 1
+
+
+_STORE = Path(__file__).resolve().parent.parent / ".sessions.json"
+
+
+def _persist() -> None:
+    """Mirror sessions to one JSON file so a restart doesn't discard them."""
+    try:
+        _STORE.write_text(json.dumps(_sessions, default=str), encoding="utf-8")
+    except OSError:
+        pass  # persistence is a convenience; never fail a request over it
+
+
+def _restore() -> None:
+    """Reload sessions at import, coercing the stage back to its enum."""
+    if not _STORE.exists():
+        return
+    try:
+        raw = json.loads(_STORE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return
+    if not isinstance(raw, dict):
+        return
+    for sid, sess in raw.items():
+        if not isinstance(sess, dict):
+            continue
+        try:
+            sess["current_stage"] = SocraticStage(sess["current_stage"])
+        except (KeyError, ValueError):
+            continue
+        sess.setdefault("consecutive_guesses", 0)
+        sess.setdefault("descents", 0)
+        _sessions[sid] = sess
+
+
+_restore()
 
 
 def _get_session(session_id: str) -> dict:
@@ -26,11 +77,8 @@ def _get_session(session_id: str) -> dict:
 
 
 def _classify(answer_correct: bool, reasoning_correct: bool) -> Branch:
-    """
-    The two axes, kept separate. The second case is the whole point of the
-    product: the exact symptom of leaning on AI is a right answer with no
-    reasoning behind it, and nothing else we could build detects that.
-    """
+    """Answer and reasoning scored separately. counter_example is the key case:
+    a right answer with no reasoning is the symptom of leaning on AI."""
     if answer_correct and reasoning_correct:
         return Branch.ADVANCE
     if answer_correct and not reasoning_correct:
@@ -70,12 +118,8 @@ def _summarise(session: dict, solved: bool) -> str:
 
 @router.post("/diagnose", response_model=DiagnoseResponse)
 def diagnose(req: DiagnoseRequest):
-    """
-    Step 1: the student submits code (and an optional question).
-    One LLM call finds the bug, names the concept gap, and plans the whole
-    5-rung ladder up front -- so the tutor always knows where it is going.
-    Returns the first Socratic question only.
-    """
+    """One LLM call plans the whole ladder up front, so the tutor always knows
+    where it is going. Returns only the first question."""
     diagnosis = llm.diagnose(
         code=req.code,
         language=req.language,
@@ -99,6 +143,7 @@ def diagnose(req: DiagnoseRequest):
         ],
     }
 
+    _persist()
     return DiagnoseResponse(
         session_id=session_id,
         first_message=first_question,
@@ -112,17 +157,14 @@ def diagnose(req: DiagnoseRequest):
 @router.post("/respond", response_model=RespondResponse)
 def respond(req: RespondRequest):
     """
-    Step 2+: the student answers the current question.
+    Evaluate one answer and move the ladder.
 
-    Both axes are evaluated and reported separately, so the UI can render
-    four visually distinct outcomes instead of one blob of chat text:
-      right + right reasoning  -> advance
-      right + WRONG reasoning  -> counter-example, stay on this rung
-      wrong + right reasoning  -> nudge, stay on this rung
-      both wrong               -> descend, i.e. give more help
+      right + right reasoning -> advance
+      right + WRONG reasoning -> counter_example, stay on this rung
+      wrong + right reasoning -> nudge, stay on this rung
+      both wrong              -> descend (the next rung gives more help)
 
-    "I don't know" skips the LLM entirely and descends. Saying so is the most
-    useful answer a stuck student can give; it is never scored as a failure.
+    "I don't know" skips the LLM and descends; it is never scored as a failure.
     """
     session = _get_session(req.session_id)
     diag = session["diagnosis"]
@@ -167,7 +209,7 @@ def respond(req: RespondRequest):
         feedback = evaluation.get("feedback", "")
         branch = _classify(answer_correct, reasoning_correct)
 
-        # Two blind guesses in a row: stop asking, start helping.
+        # Two guesses in a row: stop asking, start helping.
         session["consecutive_guesses"] = (
             session["consecutive_guesses"] + 1 if is_guessing else 0
         )
@@ -176,6 +218,12 @@ def respond(req: RespondRequest):
         ):
             branch = Branch.DESCEND
             session["consecutive_guesses"] = 0
+
+        # Out of retries here: descend rather than ask a fourth time.
+        if session["attempt"] >= ATTEMPT_LIMIT and branch in (
+            Branch.COUNTER_EXAMPLE, Branch.NUDGE
+        ):
+            branch = Branch.DESCEND
 
         # Last rung: the LLM decides when the student has understood.
         if stage_index == LAST_INDEX and (
@@ -193,6 +241,7 @@ def respond(req: RespondRequest):
         session["history"].append(
             {"role": "bot", "stage": stage.value, "content": feedback}
         )
+        _persist()
         return RespondResponse(
             message=feedback,
             question=None,
@@ -206,6 +255,7 @@ def respond(req: RespondRequest):
             is_guessing=is_guessing,
             branch=Branch.TERMINATE,
             descents=session["descents"],
+            attempt=session["attempt"],
             said_i_dont_know=req.i_dont_know,
         )
 
@@ -218,7 +268,7 @@ def respond(req: RespondRequest):
         session["stage_index"] = stage_index
         session["attempt"] = 1
     else:
-        # Same rung, another go. The question stays on screen.
+        # Same rung, another go.
         session["attempt"] += 1
         next_question = diag["hints"][stage.value]
 
@@ -226,6 +276,7 @@ def respond(req: RespondRequest):
         {"role": "bot", "stage": stage.value, "content": f"{feedback}\n\n{next_question}"}
     )
 
+    _persist()
     return RespondResponse(
         message=feedback,
         question=next_question,
@@ -238,6 +289,7 @@ def respond(req: RespondRequest):
         is_guessing=is_guessing,
         branch=branch,
         descents=session["descents"],
+        attempt=session["attempt"],
         said_i_dont_know=req.i_dont_know,
         run_this=_run_this(session, stage),
     )

@@ -3,11 +3,9 @@
 import type { Branch } from "@/lib/api";
 
 /**
- * Renders the four outcomes as four visually distinct states.
- *
- * COUNTER_EXAMPLE is the one that matters: a right answer with wrong reasoning
- * is the exact symptom of leaning on AI, and a normal tutor says "correct!"
- * and moves on. It gets the loudest treatment on this screen.
+ * The four outcomes as four distinct states. counter_example gets the loudest
+ * treatment: a right answer with wrong reasoning is the symptom of leaning on
+ * AI, and a normal tutor just says "correct!" and moves on.
  */
 const STYLES: Record<
   Branch,
