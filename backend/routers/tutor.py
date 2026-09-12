@@ -198,6 +198,7 @@ def respond(req: RespondRequest):
             bug_type=diag["bug_type"],
             concept_gap=diag["concept_gap"],
             correct_answer=diag["correct_answer"],
+            root_cause=diag.get("root_cause", diag["correct_answer"]),
             stage=stage.value,
             question_asked=last_bot_msg,
             user_answer=req.user_answer,
@@ -206,8 +207,14 @@ def respond(req: RespondRequest):
         answer_correct = bool(evaluation.get("answer_correct"))
         reasoning_correct = bool(evaluation.get("reasoning_correct"))
         is_guessing = bool(evaluation.get("is_guessing"))
+        early_win = bool(evaluation.get("early_win"))
         feedback = evaluation.get("feedback", "")
-        branch = _classify(answer_correct, reasoning_correct)
+
+        # Student named the root cause at any rung — close the ladder immediately.
+        if early_win:
+            branch = Branch.TERMINATE
+        else:
+            branch = _classify(answer_correct, reasoning_correct)
 
         # Two guesses in a row: stop asking, start helping.
         session["consecutive_guesses"] = (

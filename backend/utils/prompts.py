@@ -17,18 +17,21 @@ Student question: {question}
 
 Return JSON with this exact shape:
 {{
-  "bug_type": "short label, e.g. 'type coercion', 'off-by-one', 'scope issue'",
+  "bug_type": "short label, e.g. 'type coercion', 'off-by-one', 'undefined name'",
   "concept_gap": "the underlying concept the student is missing",
   "correct_answer": "the exact fix or correct explanation",
+  "root_cause": "one precise sentence naming the exact error: the line number, the identifier or expression, and what is wrong — e.g. \"line 6: 'score' is not defined; the nearest name in scope is 'scores'\"",
   "hints": {{
-    "orientation": "A question that makes them point to WHERE in the code the issue lives (no answer, just location)",
-    "localization": "A question about WHAT that specific part of the code means or evaluates to",
-    "observation": "Ask them to RUN one specific snippet and describe the output they see",
-    "run_this": "the exact one-line snippet for the observation stage, e.g. print(type(quantity))",
-    "naming": "Name the concept involved, then ask them to connect it to what they observed",
-    "explain": "Ask them to explain the fix in their own words, then suggest trying it with a different input"
+    "orientation": "A question pointing to WHERE in the code the issue lives — must be answerable only by looking at the location named in root_cause",
+    "localization": "A question about WHAT the specific token or expression named in root_cause means or evaluates to",
+    "observation": "Ask the student to RUN one specific snippet that will surface the root_cause error directly",
+    "run_this": "the exact one-line snippet for the observation stage, chosen so its output directly reveals root_cause",
+    "naming": "Ask the student to name the concept that explains root_cause (e.g. 'what do we call it when a name is used but never defined?')",
+    "explain": "Ask them to state the fix in their own words and explain why it resolves root_cause"
   }}
-}}\
+}}
+
+CRITICAL: every hint must narrow toward the single root_cause above. Do not introduce alternative hypotheses (scope, return value, type) unless root_cause is about those things.\
 """
 
 EVALUATOR_SYSTEM = """\
@@ -43,6 +46,7 @@ Session context:
 - Bug type: {bug_type}
 - Concept gap: {concept_gap}
 - Correct answer: {correct_answer}
+- Root cause (single causal fact): {root_cause}
 - Current stage: {stage}
 - Question the bot asked: {question_asked}
 - Student's answer: {user_answer}
@@ -53,15 +57,25 @@ Evaluate the student's answer and return JSON:
   "answer_correct": true or false,
   "reasoning_correct": true or false,
   "is_guessing": true or false,
+  "early_win": true or false,
   "feedback": "Your reply to the student (1-3 sentences, Socratic, no lecturing)",
   "advance": true or false
 }}
 
-Rules for feedback:
+Rules for early_win — check this FIRST, before everything else:
+- Set early_win=true if the student's answer captures the causal fact stated in root_cause,
+  regardless of which stage this is and regardless of how informally they phrased it.
+  Examples: root_cause says "line 6: 'score' not defined" — student says "score isn't defined anywhere"
+  → early_win=true. Student says "I think score is misspelled, should be scores" → early_win=true.
+- When early_win=true also set answer_correct=true, reasoning_correct=true, advance=true,
+  and write feedback that confirms they found it and briefly names the concept.
+- When early_win=true do NOT say "not it" or redirect — the student is done.
+
+Rules for feedback (when early_win=false):
 - answer_correct AND reasoning_correct → praise briefly, tell them to move on
 - answer_correct BUT reasoning_wrong → give a counter-example to expose the flaw, do NOT advance
 - answer_wrong BUT reasoning_correct → acknowledge good thinking, give a small nudge toward the right answer, do NOT advance
-- both wrong → redirect gently with a small hint pointing closer to the answer, do NOT advance
+- both wrong → redirect gently with a small hint pointing closer to root_cause, do NOT advance
 - At 'explain' stage with attempt >= 2 → you MAY reveal the correct answer and explain why
 
 Rules for is_guessing:
@@ -70,12 +84,12 @@ Rules for is_guessing:
 - false whenever the student shows ANY real reasoning, even if wrong
 
 Rules for advance:
-- Set advance=true only when answer_correct AND reasoning_correct
+- Set advance=true only when answer_correct AND reasoning_correct (or early_win=true)
 - At 'explain' stage, advance=true after student demonstrates understanding OR after attempt >= 2
 
 Hard constraints:
 - Write ALL student-facing text in English, regardless of the language of the code or its comments.
-- Never state the fix, the corrected line, or the concept name before the 'naming' stage.
+- Never state the fix, the corrected line, or the concept name before the 'naming' stage (unless early_win).
 - Never repeat a hint you have already given; the student has seen it.\
 """
 
