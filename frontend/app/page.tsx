@@ -331,7 +331,12 @@ export default function Home() {
             />
           )}
           <ConsolePane output={output} />
-          <WantedPane expected={expected} onChange={setExpected} />
+          <WantedPane
+            expected={expected}
+            onChange={setExpected}
+            editable={false}
+            lockNote="locked — set before the first question"
+          />
         </div>
       </section>
 

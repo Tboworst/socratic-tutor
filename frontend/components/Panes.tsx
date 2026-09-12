@@ -90,24 +90,38 @@ export function ConsolePane({ output }: { output: string | null }) {
  * program says it was meant to print 15. Free text: an expected result can run
  * several lines, be an error message, or be "it should not crash".
  */
+// Locked once the ladder starts: it's the student's stated expectation at
+// diagnosis time, so it can't be edited to fit a hint received afterwards.
 export function WantedPane({
   expected,
   onChange,
+  editable = true,
+  lockNote,
 }: {
   expected: string;
   onChange: (v: string) => void;
+  editable?: boolean;
+  lockNote?: string;
 }) {
   return (
     <label className="block min-w-0 border-l-2 border-good/50 bg-good/[0.045] px-4 py-3">
-      <span className="eyebrow text-good/80">What you wanted</span>
+      <div className="flex items-baseline gap-3">
+        <span className="eyebrow text-good/80">What you wanted</span>
+        {!editable && lockNote && (
+          <span className="eyebrow text-muted-dim">{lockNote}</span>
+        )}
+      </div>
       <textarea
         id="expected-output"
         value={expected}
         onChange={(e) => onChange(e.target.value)}
+        readOnly={!editable}
         rows={Math.min(4, Math.max(2, expected.split("\n").length))}
         spellCheck={false}
         placeholder="what it should have printed"
-        className="mt-2 block w-full resize-none border-0 bg-transparent p-0 font-mono text-[1.05rem] leading-snug text-[#A8E8C9] placeholder:text-good/30 focus:outline-none"
+        className={`mt-2 block w-full resize-none border-0 bg-transparent p-0 font-mono text-[1.05rem] leading-snug text-[#A8E8C9] placeholder:text-good/30 focus:outline-none ${
+          editable ? "" : "cursor-not-allowed opacity-70"
+        }`}
       />
     </label>
   );
