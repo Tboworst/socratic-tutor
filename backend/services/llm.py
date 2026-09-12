@@ -63,7 +63,10 @@ def _ask(system: str, user: str) -> str:
             system=system,
             messages=[{"role": "user", "content": user}],
         )
-        return msg.content[0].text
+        text = next((b.text for b in msg.content if getattr(b, "type", "") == "text"), None)
+        if not text:
+            raise RuntimeError(f"{msg.model} returned no text block (stop_reason={msg.stop_reason!r}).")
+        return text
 
     # OpenRouter and Ollama share the OpenAI-compatible format
     client = _get_openai_client()
@@ -74,23 +77,65 @@ def _ask(system: str, user: str) -> str:
 
     response = client.chat.completions.create(
         model=model,
-        max_tokens=1024,
+        max_tokens=int(os.getenv("LLM_MAX_TOKENS", "2048")),
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
     )
-    return response.choices[0].message.content
+
+    choice = response.choices[0]
+    text = choice.message.content
+
+    # Reasoning models leave content null and put their output in a separate
+    # field; some providers return a refusal instead. Without this, a null
+    # content surfaced as an opaque AttributeError two frames later.
+    if not text:
+        text = getattr(choice.message, "reasoning", None) or getattr(
+            choice.message, "refusal", None
+        )
+
+    if not text:
+        reason = getattr(choice, "finish_reason", None)
+        hint = (
+            " The reasoning consumed the whole token budget -- raise LLM_MAX_TOKENS "
+            "or pick a non-reasoning model."
+            if reason == "length"
+            else " Try a different model."
+        )
+        raise RuntimeError(
+            f"{model} returned no text (finish_reason={reason!r})." + hint
+        )
+
+    return text
 
 
 def _parse_json(raw: str) -> dict:
-    """Strip markdown fences if present, then parse JSON."""
+    """
+    Strip markdown fences, then parse JSON.
+
+    Weaker models like to wrap the object in a sentence ("Here is the JSON:"),
+    so as a last resort we take everything between the first { and the last }.
+    """
+    if not isinstance(raw, str) or not raw.strip():
+        raise ValueError(f"expected a JSON string, got {raw!r}")
+
     raw = raw.strip()
     if raw.startswith("```"):
-        raw = raw.split("```")[1]
+        parts = raw.split("```")
+        if len(parts) > 1:
+            raw = parts[1]
         if raw.startswith("json"):
             raw = raw[4:]
-    return json.loads(raw.strip())
+    raw = raw.strip()
+
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        start, end = raw.find("{"), raw.rfind("}")
+        if start == -1 or end <= start:
+            raise
+        return json.loads(raw[start : end + 1])
 
 
 def _ask_json(system: str, user: str) -> dict:
@@ -102,7 +147,7 @@ def _ask_json(system: str, user: str) -> dict:
     raw = _ask(system, user)
     try:
         return _parse_json(raw)
-    except (json.JSONDecodeError, IndexError):
+    except (json.JSONDecodeError, IndexError, ValueError):
         retry_system = system + "\n\nCRITICAL: output raw JSON only. No prose, no markdown fences."
         raw = _ask(retry_system, user)
         return _parse_json(raw)
