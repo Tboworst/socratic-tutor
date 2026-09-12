@@ -102,30 +102,45 @@ Make questions challenging but fair. Respond ONLY with valid JSON.\
 """
 
 QUIZ_PROMPT_MC = """\
-Generate a multiple-choice quiz (3 questions) for this {language} code.
-Test: what specific lines output, what concepts are used, what would break if changed.
+Generate exactly 2 multiple-choice questions about this {language} code.
+{context}
 
 Code:
 ```{language}
 {code}
 ```
 
-{context}
+Rules:
+- Each question must have exactly 4 options labelled A, B, C, D.
+- correct_label must be exactly one of: A, B, C, or D.
+- Keep all text short — under 15 words per option.
+- Output ONLY the JSON object below, nothing else.
 
-Return JSON:
 {{
   "questions": [
     {{
       "id": "q1",
-      "prompt": "What does this code output when run?",
+      "prompt": "question text here",
       "options": [
-        {{"label": "A", "text": "5"}},
-        {{"label": "B", "text": "'5'"}},
-        {{"label": "C", "text": "Error"}},
-        {{"label": "D", "text": "None"}}
+        {{"label": "A", "text": "option text"}},
+        {{"label": "B", "text": "option text"}},
+        {{"label": "C", "text": "option text"}},
+        {{"label": "D", "text": "option text"}}
+      ],
+      "correct_label": "A",
+      "explanation": "one sentence explanation"
+    }},
+    {{
+      "id": "q2",
+      "prompt": "question text here",
+      "options": [
+        {{"label": "A", "text": "option text"}},
+        {{"label": "B", "text": "option text"}},
+        {{"label": "C", "text": "option text"}},
+        {{"label": "D", "text": "option text"}}
       ],
       "correct_label": "B",
-      "explanation": "Because a='5' is a string, not an integer..."
+      "explanation": "one sentence explanation"
     }}
   ]
 }}\

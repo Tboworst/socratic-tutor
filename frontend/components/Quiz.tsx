@@ -51,7 +51,9 @@ export function Quiz({
           with no code in front of you, will tell you whether it stuck.
         </p>
         {error && (
-          <p className="max-w-[58ch] text-[0.88rem] text-[#FFC0C0]">{error}</p>
+          <p className="max-w-[58ch] text-[0.88rem] text-[#FFC0C0]">
+            Quiz generation failed — hit the button again to retry.
+          </p>
         )}
         <button
           type="button"

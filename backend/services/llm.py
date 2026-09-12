@@ -247,7 +247,7 @@ def generate_quiz(*, code: str, language: str, quiz_type: str, context: str = ""
         prompt = QUIZ_PROMPT_MC.format(language=language, code=code, context=context)
     else:
         prompt = QUIZ_PROMPT_CODE_FIX.format(language=language, code=code, context=context)
-    return _ask_json(QUIZ_SYSTEM, prompt, max_tokens=1200)
+    return _ask_json(QUIZ_SYSTEM, prompt, max_tokens=1600)
 
 
 def generate_challenge(*, language: str, difficulty: str, num_bugs: int) -> dict:
