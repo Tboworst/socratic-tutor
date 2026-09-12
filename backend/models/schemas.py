@@ -32,19 +32,46 @@ class DiagnoseResponse(BaseModel):
     session_id: str
     first_message: str  # The first Socratic question (orientation stage)
     current_stage: SocraticStage
+    # Surfaced so the UI can show the rung counter.
+    stage_index: int = 0
+    total_stages: int = 5
+    bug_type: Optional[str] = None
 
 
 class RespondRequest(BaseModel):
     session_id: str
     user_answer: str
+    # "I don't know": skips the LLM and descends. Never scored as a failure.
+    i_dont_know: bool = False
+
+
+class Branch(str, Enum):
+    """The four outcomes, plus terminal. The UI renders each one differently."""
+    ADVANCE = "advance"                  # right + right reasoning
+    COUNTER_EXAMPLE = "counter_example"  # right + WRONG reasoning (key case)
+    NUDGE = "nudge"                      # wrong + right reasoning
+    DESCEND = "descend"                  # both wrong -> more help
+    TERMINATE = "terminate"
 
 
 class RespondResponse(BaseModel):
-    message: str               # Bot's reply
+    message: str               # feedback only, no longer glued to the question
+    question: Optional[str] = None   # next question, separate so the UI can lay it out
     current_stage: SocraticStage
     stage_index: int           # 0-4, for progress bar
+    total_stages: int = 5
     is_complete: bool
     summary: Optional[str] = None   # Final note when session ends
+
+    # Added: without these the four branches are invisible to the frontend.
+    answer_correct: bool = False
+    reasoning_correct: bool = False
+    is_guessing: bool = False
+    branch: Branch = Branch.DESCEND
+    descents: int = 0          # times we had to give more help
+    attempt: int = 1           # which try this is at the current rung
+    said_i_dont_know: bool = False
+    run_this: Optional[str] = None   # observation rung: snippet to execute
 
 
 # --- Quiz ---
