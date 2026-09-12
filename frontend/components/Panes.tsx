@@ -41,6 +41,7 @@ export function EditorPane({
   running,
   onRun,
   language = "python",
+  canRun = true,
   editable = true,
   lockNote,
   openNote,
@@ -52,6 +53,7 @@ export function EditorPane({
   running: boolean;
   onRun: () => void;
   language?: string;
+  canRun?: boolean;
   editable?: boolean;
   lockNote?: string;
   openNote?: string;
@@ -87,14 +89,16 @@ export function EditorPane({
           >
             {copied ? "copied!" : "copy"}
           </button>
-          <button
-            type="button"
-            onClick={onRun}
-            disabled={running}
-            className="rounded bg-paper/[0.07] px-3.5 py-1.5 font-mono text-xs text-paper ring-1 ring-inset ring-ink-line-2 transition-colors hover:bg-volt/15 hover:text-volt hover:ring-volt-dim disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
-          >
-            {running ? "running…" : "▸ Run"}
-          </button>
+          {canRun && (
+            <button
+              type="button"
+              onClick={onRun}
+              disabled={running}
+              className="rounded bg-paper/[0.07] px-3.5 py-1.5 font-mono text-xs text-paper ring-1 ring-inset ring-ink-line-2 transition-colors hover:bg-volt/15 hover:text-volt hover:ring-volt-dim disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
+            >
+              {running ? "running…" : "▸ Run"}
+            </button>
+          )}
         </div>
       </div>
 

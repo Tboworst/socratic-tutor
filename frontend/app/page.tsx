@@ -262,6 +262,7 @@ export default function Home() {
               }}
               running={running}
               onRun={handleRun}
+              canRun={canExecute}
             />
           </Step>
 
@@ -299,8 +300,8 @@ export default function Home() {
           <Step
             n={3}
             title="Say what you expected"
-            locked={!hasRun}
-            hint={hasRun ? undefined : "after you run it"}
+            locked={canExecute ? !hasRun : !code.trim() || code.trim() === STARTER.trim()}
+            hint={canExecute && !hasRun ? "after you run it" : undefined}
           >
             <div className="grid gap-4 lg:grid-cols-2">
               <WantedPane expected={expected} onChange={setExpected} />
@@ -372,6 +373,7 @@ export default function Home() {
           }}
           running={running}
           onRun={handleRun}
+          canRun={canExecute}
           editable={editorEditable}
           lockNote="read-only while the tutor is asking"
           openNote={atExplain ? "open — try the fix and run it" : undefined}
