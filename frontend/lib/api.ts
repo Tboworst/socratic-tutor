@@ -1,10 +1,3 @@
-/**
- * Typed client for the FastAPI backend.
- * Mirrors backend/models/schemas.py exactly. If that file changes, change this one.
- */
-
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 export type SocraticStage =
   | "orientation"
   | "localization"
@@ -58,7 +51,7 @@ export interface RespondResponse {
   is_guessing: boolean;
   branch: Branch;
   descents: number;
-  attempt: number;  // capped at 3, then the tutor descends
+  attempt: number; // capped at 3, then the tutor descends
   said_i_dont_know: boolean;
   run_this: string | null;
 }
@@ -93,60 +86,7 @@ export interface ExecuteResponse {
   exit_code: number;
 }
 
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    readonly status?: number,
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
-
-async function post<T>(path: string, body: unknown): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(`${BASE}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-  } catch {
-    throw new ApiError(
-      `Can't reach the tutor service at ${BASE}. Is the backend running?`,
-    );
-  }
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new ApiError(
-      detail ? `${res.status} — ${detail.slice(0, 200)}` : `Request failed (${res.status})`,
-      res.status,
-    );
-  }
-  return (await res.json()) as T;
-}
-
-export function diagnose(code: string, question: string, language = "python") {
-  return post<DiagnoseResponse>("/api/tutor/diagnose", { code, language, question });
-}
-
-export function respond(sessionId: string, answer: string, iDontKnow = false) {
-  return post<RespondResponse>("/api/tutor/respond", {
-    session_id: sessionId,
-    user_answer: answer,
-    i_dont_know: iDontKnow,
-  });
-}
-
-export function generateQuiz(code: string, sessionId: string | null) {
-  return post<QuizGenerateResponse>("/api/quiz/generate", {
-    code,
-    language: "python",
-    quiz_type: "mc",
-    session_id: sessionId,
-  });
-}
-
-export function execute(code: string, language = "python", stdin = "") {
-  return post<ExecuteResponse>("/api/execute/", { code, language, stdin });
-}
+export { ApiError, BASE, post } from "@/services/httpClient";
+export { diagnose, respond } from "@/services/tutorService";
+export { generateQuiz } from "@/services/quizService";
+export { execute } from "@/services/executeService";
