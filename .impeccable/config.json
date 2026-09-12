@@ -1,0 +1,32 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          "components.html"
+        ],
+        "createdAt": "2026-09-12T14:57:16.567Z",
+        "reason": "brief pins #C96442 terracotta fill and white text on primary button; both colors are explicit design spec"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "components.html"
+        ],
+        "createdAt": "2026-09-12T14:57:16.582Z",
+        "reason": "code editor highlighted line bg flush to edges is standard editor UI; intentional by brief"
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-09-12T14:57:16.602Z",
+        "reason": "brief explicitly specifies Inter or system sans for UI typography"
+      }
+    ]
+  }
+}

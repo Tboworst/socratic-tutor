@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Socratic Tutor — Component Kit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg:              #FAF9F7;
+      --surface:         #FFFFFF;
+      --border:          #E8E5E0;
+      --border-dark:     #CCC8C2;
+      --text:            #1F1E1C;
+      --text-2:          #6B6862;
+      --accent:          #C96442;
+      --accent-hover:    #B15540;
+      --accent-subtle:   #FBEFE9;
+      --success:         #4A7C59;
+      --success-bg:      #EFF6F1;
+      --success-border:  #8DBD9E;
+      --error:           #B4534A;
+      --error-bg:        #FAEDEC;
+      --error-border:    #D4857E;
+
+      --syn-keyword:     #6E7FA3;
+      --syn-string:      #A08A78;
+      --syn-comment:     #B0A89F;
+      --syn-number:      #7A8E6A;
+      --syn-op:          #8A8480;
+
+      --font-ui:   'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-code: 'JetBrains Mono', ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+    }
+
+    html {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    ::selection {
+      background: var(--accent-subtle);
+      color: var(--text);
+    }
+
+    /* ── Showcase chrome ─────────────────────────────── */
+
+    .showcase {
+      padding: 52px 24px 96px;
+    }
+
+    .showcase-header {
+      max-width: 1120px;
+      margin: 0 auto 48px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .showcase-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.012em;
+    }
+
+    .component-grid {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: start;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.065em;
+      text-transform: uppercase;
+      color: var(--text-2);
+      margin-bottom: 14px;
+    }
+
+    /* ── Code Editor ─────────────────────────────────── */
+
+    .editor {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow:
+        0 1px 3px rgba(31, 30, 28, 0.05),
+        0 6px 20px rgba(31, 30, 28, 0.04);
+      overflow: hidden;
+    }
+
+    .editor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+    }
+
+    .editor-file {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .file-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .file-dot--py { background: #7A9AB5; }
+
+    .file-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .editor-lang {
+      font-size: 12px;
+      color: var(--text-2);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .editor-body {
+      overflow-x: auto;
+      padding: 14px 0;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .editor-body::-webkit-scrollbar        { height: 5px; }
+    .editor-body::-webkit-scrollbar-track  { background: transparent; }
+    .editor-body::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 3px; }
+    .editor-body::-webkit-scrollbar-thumb:hover { background: var(--border-dark); }
+
+    .code-line {
+      display: flex;
+      align-items: baseline;
+      position: relative;
+      padding-right: 24px;
+    }
+
+    .line-num {
+      flex-shrink: 0;
+      width: 44px;
+      padding-left: 16px;
+      padding-right: 14px;
+      text-align: right;
+      font-family: var(--font-code);
+      font-size: 13.5px;
+      line-height: 1.7;
+      color: var(--text-2);
+      opacity: 0.42;
+      user-select: none;
+    }
+
+    .line-content {
+      font-family: var(--font-code);
+      font-size: 13.5px;
+      line-height: 1.7;
+      white-space: pre;
+      color: var(--text);
+      flex: 1;
+    }
+
+    /* Tutor-highlighted line */
+    .code-line--hl {
+      background: var(--accent-subtle);
+    }
+
+    .code-line--hl::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--accent);
+    }
+
+    .code-line--hl .line-num {
+      opacity: 0.6;
+    }
+
+    /* Syntax classes: muted, desaturated, text-first */
+    .kw  { color: var(--syn-keyword); }
+    .str { color: var(--syn-string);  }
+    .cmt { color: var(--syn-comment); font-style: italic; }
+    .num { color: var(--syn-number);  }
+    .op  { color: var(--syn-op);      }
+
+    /* ── Quiz Card ───────────────────────────────────── */
+
+    .quiz-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow:
+        0 1px 3px rgba(31, 30, 28, 0.05),
+        0 6px 20px rgba(31, 30, 28, 0.04);
+      padding: 24px;
+    }
+
+    .quiz-type-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .quiz-question {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .ic {
+      font-family: var(--font-code);
+      font-size: 13.5px;
+      background: rgba(201, 100, 66, 0.1);
+      color: var(--text);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-style: normal;
+    }
+
+    /* Options list */
+    .quiz-options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .quiz-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      cursor: pointer;
+      text-align: left;
+      width: 100%;
+      font-family: var(--font-ui);
+      outline: none;
+      transition:
+        border-color  150ms ease-out,
+        background    150ms ease-out;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .quiz-option:hover:not([disabled]):not(.is-correct):not(.is-incorrect) {
+      border-color: var(--border-dark);
+    }
+
+    .quiz-option:focus-visible {
+      outline: 2px solid rgba(201, 100, 66, 0.4);
+      outline-offset: 2px;
+    }
+
+    .quiz-option.is-selected {
+      background: var(--accent-subtle);
+      border-color: var(--accent);
+    }
+
+    .quiz-option.is-correct {
+      background: var(--success-bg);
+      border-color: var(--success-border);
+      cursor: default;
+    }
+
+    .quiz-option.is-incorrect {
+      background: var(--error-bg);
+      border-color: var(--error-border);
+      cursor: default;
+    }
+
+    .quiz-option[disabled] { cursor: default; }
+
+    /* Letter badge */
+    .badge {
+      flex-shrink: 0;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-2);
+      transition:
+        background   150ms ease-out,
+        border-color 150ms ease-out,
+        color        150ms ease-out;
+    }
+
+    .is-selected   .badge { background: var(--accent);   border-color: var(--accent);   color: #fff; }
+    .is-correct    .badge { background: var(--success);  border-color: var(--success);  color: #fff; }
+    .is-incorrect  .badge { background: var(--error);    border-color: var(--error);    color: #fff; }
+
+    .option-text {
+      flex: 1;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text);
+    }
+
+    .option-icon {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 150ms ease-out;
+    }
+
+    .is-correct  .option-icon,
+    .is-incorrect .option-icon { opacity: 1; }
+
+    /* Explanation slide-in */
+    .explanation-wrapper {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 220ms ease-out;
+    }
+
+    .explanation-wrapper.is-open {
+      grid-template-rows: 1fr;
+    }
+
+    .explanation-wrapper > div { overflow: hidden; }
+
+    .explanation {
+      background: var(--accent-subtle);
+      border-radius: 8px;
+      margin-top: 12px;
+      padding: 14px 16px;
+      font-size: 14px;
+      color: var(--text-2);
+      line-height: 1.6;
+    }
+
+    .explanation strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .explanation .ic {
+      background: rgba(201, 100, 66, 0.14);
+    }
+
+    /* Footer & primary button */
+    .quiz-footer {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    .btn-primary {
+      padding: 10px 18px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1;
+      cursor: pointer;
+      letter-spacing: 0.01em;
+      outline: none;
+      transition: background 150ms ease-out;
+    }
+
+    .btn-primary:hover:not([disabled]) { background: var(--accent-hover); }
+
+    .btn-primary:focus-visible {
+      outline: 2px solid rgba(201, 100, 66, 0.4);
+      outline-offset: 2px;
+    }
+
+    .btn-primary[disabled] {
+      opacity: 0.42;
+      cursor: not-allowed;
+    }
+
+    /* ── Responsive ──────────────────────────────────── */
+
+    @media (max-width: 768px) {
+      .showcase {
+        padding: 32px 16px 72px;
+      }
+
+      .component-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="showcase">
+    <header class="showcase-header">
+      <h1 class="showcase-title">Socratic Tutor — Component Kit</h1>
+    </header>
+
+    <main class="component-grid">
+
+      <!-- ─────────────────────────────────────────────
+           COMPONENT 1 — Code Editor
+           ───────────────────────────────────────────── -->
+      <section>
+        <p class="section-label">Code Editor</p>
+
+        <div class="editor" role="region" aria-label="Code editor — fibonacci.py">
+          <div class="editor-header">
+            <div class="editor-file">
+              <span class="file-dot file-dot--py" aria-hidden="true"></span>
+              <span class="file-name">fibonacci.py</span>
+            </div>
+            <span class="editor-lang">Python</span>
+          </div>
+
+          <div class="editor-body" role="presentation">
+            <!-- Line 1 -->
+            <div class="code-line">
+              <span class="line-num">1</span>
+              <span class="line-content"><span class="kw">def</span> fibonacci<span class="op">(</span>n<span class="op">):</span></span>
+            </div>
+            <!-- Line 2 -->
+            <div class="code-line">
+              <span class="line-num">2</span>
+              <span class="line-content">    <span class="str">"""Return the nth Fibonacci number."""</span></span>
+            </div>
+            <!-- Line 3 -->
+            <div class="code-line">
+              <span class="line-num">3</span>
+              <span class="line-content">    <span class="kw">if</span> n <span class="op">&lt;=</span> <span class="num">1</span><span class="op">:</span></span>
+            </div>
+            <!-- Line 4 -->
+            <div class="code-line">
+              <span class="line-num">4</span>
+              <span class="line-content">        <span class="kw">return</span> n</span>
+            </div>
+            <!-- Line 5 (empty) -->
+            <div class="code-line">
+              <span class="line-num">5</span>
+              <span class="line-content"> </span>
+            </div>
+            <!-- Line 6 -->
+            <div class="code-line">
+              <span class="line-num">6</span>
+              <span class="line-content">    a<span class="op">,</span> b <span class="op">=</span> <span class="num">0</span><span class="op">,</span> <span class="num">1</span></span>
+            </div>
+            <!-- Line 7 -->
+            <div class="code-line">
+              <span class="line-num">7</span>
+              <span class="line-content">    <span class="kw">for</span> _ <span class="kw">in</span> range<span class="op">(</span>n <span class="op">-</span> <span class="num">1</span><span class="op">):</span></span>
+            </div>
+            <!-- Line 8 — HIGHLIGHTED (tutor is pointing here) -->
+            <div class="code-line code-line--hl" aria-label="Line 8, currently highlighted by tutor">
+              <span class="line-num">8</span>
+              <span class="line-content">        a<span class="op">,</span> b <span class="op">=</span> b<span class="op">,</span> a <span class="op">+</span> b  <span class="cmt"># advance the sequence</span></span>
+            </div>
+            <!-- Line 9 (empty) -->
+            <div class="code-line">
+              <span class="line-num">9</span>
+              <span class="line-content"> </span>
+            </div>
+            <!-- Line 10 -->
+            <div class="code-line">
+              <span class="line-num">10</span>
+              <span class="line-content">    <span class="kw">return</span> b</span>
+            </div>
+            <!-- Line 11 (empty) -->
+            <div class="code-line">
+              <span class="line-num">11</span>
+              <span class="line-content"> </span>
+            </div>
+            <!-- Line 12 -->
+            <div class="code-line">
+              <span class="line-num">12</span>
+              <span class="line-content">result <span class="op">=</span> fibonacci<span class="op">(</span><span class="num">10</span><span class="op">)</span></span>
+            </div>
+            <!-- Line 13 -->
+            <div class="code-line">
+              <span class="line-num">13</span>
+              <span class="line-content">print<span class="op">(</span><span class="str">f"Result: {result}"</span><span class="op">)</span></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────────────────────────────────────
+           COMPONENT 2 — Quiz Card
+           ───────────────────────────────────────────── -->
+      <section>
+        <p class="section-label">Quiz Card</p>
+
+        <div class="quiz-card">
+          <span class="quiz-type-label">Check Your Understanding</span>
+
+          <p class="quiz-question">
+            What does the expression <code class="ic">a, b = b, a + b</code> accomplish on each loop iteration?
+          </p>
+
+          <div class="quiz-options" role="group" aria-labelledby="quiz-q">
+
+            <button class="quiz-option" data-option="a" onclick="selectOption('a')" aria-pressed="false">
+              <span class="badge" aria-hidden="true">A</span>
+              <span class="option-text">It creates two new variables from scratch on every iteration.</span>
+              <span class="option-icon" aria-hidden="true"></span>
+            </button>
+
+            <button class="quiz-option" data-option="b" onclick="selectOption('b')" aria-pressed="false">
+              <span class="badge" aria-hidden="true">B</span>
+              <span class="option-text">It simultaneously updates both <code class="ic">a</code> and <code class="ic">b</code> using the previous values of each.</span>
+              <span class="option-icon" aria-hidden="true"></span>
+            </button>
+
+            <button class="quiz-option" data-option="c" onclick="selectOption('c')" aria-pressed="false">
+              <span class="badge" aria-hidden="true">C</span>
+              <span class="option-text">It swaps <code class="ic">a</code> and <code class="ic">b</code> without computing any new value.</span>
+              <span class="option-icon" aria-hidden="true"></span>
+            </button>
+
+            <button class="quiz-option" data-option="d" onclick="selectOption('d')" aria-pressed="false">
+              <span class="badge" aria-hidden="true">D</span>
+              <span class="option-text">It appends the next Fibonacci value to a growing list.</span>
+              <span class="option-icon" aria-hidden="true"></span>
+            </button>
+
+          </div>
+
+          <!-- Explanation — hidden until answered -->
+          <div class="explanation-wrapper" id="explanation-wrapper" aria-live="polite">
+            <div>
+              <div class="explanation">
+                <strong>Python evaluates the right-hand side completely before assigning.</strong>
+                Both <code class="ic">b</code> and <code class="ic">a + b</code> are computed
+                using the current values, then assigned in one step — so <code class="ic">a</code>
+                steps forward to the old <code class="ic">b</code>, and <code class="ic">b</code>
+                steps forward to their sum, simultaneously. No temporary variable needed.
+              </div>
+            </div>
+          </div>
+
+          <div class="quiz-footer">
+            <button class="btn-primary" id="check-btn" onclick="handleBtn()" disabled>
+              Check Answer
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    const CORRECT = 'b';
+
+    const CHECK_SVG = `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+      <path d="M2.5 7.5L5.8 11L12.5 4.5" stroke="#4A7C59" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+
+    const X_SVG = `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+      <path d="M3.5 3.5L11.5 11.5M11.5 3.5L3.5 11.5" stroke="#B4534A" stroke-width="1.65" stroke-linecap="round"/>
+    </svg>`;
+
+    let selected = null;
+    let answered = false;
+
+    function selectOption(letter) {
+      if (answered) return;
+
+      document.querySelectorAll('.quiz-option').forEach(el => {
+        el.classList.remove('is-selected');
+        el.setAttribute('aria-pressed', 'false');
+      });
+
+      selected = letter;
+      const el = document.querySelector(`.quiz-option[data-option="${letter}"]`);
+      el.classList.add('is-selected');
+      el.setAttribute('aria-pressed', 'true');
+      document.getElementById('check-btn').disabled = false;
+    }
+
+    function handleBtn() {
+      answered ? resetQuiz() : submitAnswer();
+    }
+
+    function submitAnswer() {
+      if (!selected) return;
+      answered = true;
+
+      document.querySelectorAll('.quiz-option').forEach(el => {
+        el.disabled = true;
+        const letter = el.dataset.option;
+
+        if (letter === CORRECT) {
+          el.classList.remove('is-selected');
+          el.classList.add('is-correct');
+          el.querySelector('.option-icon').innerHTML = CHECK_SVG;
+        } else if (letter === selected) {
+          el.classList.remove('is-selected');
+          el.classList.add('is-incorrect');
+          el.querySelector('.option-icon').innerHTML = X_SVG;
+        }
+      });
+
+      document.getElementById('explanation-wrapper').classList.add('is-open');
+
+      const btn = document.getElementById('check-btn');
+      btn.textContent = 'Next Question';
+      btn.disabled = false;
+    }
+
+    function resetQuiz() {
+      selected = null;
+      answered = false;
+
+      document.querySelectorAll('.quiz-option').forEach(el => {
+        el.disabled = false;
+        el.classList.remove('is-selected', 'is-correct', 'is-incorrect');
+        el.querySelector('.option-icon').innerHTML = '';
+        el.setAttribute('aria-pressed', 'false');
+      });
+
+      document.getElementById('explanation-wrapper').classList.remove('is-open');
+
+      const btn = document.getElementById('check-btn');
+      btn.textContent = 'Check Answer';
+      btn.disabled = true;
+    }
+  </script>
+</body>
+</html>
