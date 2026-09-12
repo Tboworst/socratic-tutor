@@ -72,10 +72,19 @@ export default function Home() {
     setError(null);
     setRunning(true);
     try {
-      const combined = `${code}\n${snippet}\n`;
+      // The file itself may already crash (that's often exactly the bug
+      // being diagnosed) — appending the snippet after it would mean it
+      // never runs. Wrap the file in try/except so its own crash is
+      // swallowed, then run the snippet: top-level names it defined stay
+      // bound, but the snippet's output is never pre-empted by the crash.
+      const indented = code
+        .split("\n")
+        .map((line) => (line ? `    ${line}` : line))
+        .join("\n");
+      const combined = `try:\n${indented}\nexcept Exception:\n    pass\n${snippet}\n`;
       const r = await execute(combined);
       setOutput(`${r.stdout}${r.stderr}`.trim() || "(no output)");
-      setOutputFor(combined);
+      setOutputFor(code);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not run that snippet.");
     } finally {
@@ -256,8 +265,9 @@ export default function Home() {
                 type="button"
                 onClick={handleStart}
                 disabled={busy || !hasRun}
-                className="rounded-lg bg-volt px-6 py-3 font-display text-[0.95rem] font-bold text-[#041020] shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_24px_-8px_rgba(0,0,0,0.6)] transition hover:brightness-110 disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
+                className="inline-flex items-center gap-2 rounded-lg bg-volt px-6 py-3 font-display text-[0.95rem] font-bold text-[#041020] shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_24px_-8px_rgba(0,0,0,0.6)] transition hover:brightness-110 disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
               >
+                {busy && <Spinner className="h-4 w-4" />}
                 {busy ? "Reading your code…" : "Start the five questions"}
               </button>
               <p className="max-w-[38ch] text-[0.85rem] leading-snug text-muted-dim">
@@ -286,8 +296,9 @@ export default function Home() {
         <button
           type="button"
           onClick={restart}
-          className="font-mono text-xs text-muted underline decoration-ink-line-2 underline-offset-4 transition hover:text-volt focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
+          className="inline-flex items-center gap-2 rounded-md border border-ink-line-2 bg-ink/60 px-3 py-1.5 font-mono text-xs text-paper/80 transition hover:border-volt-dim hover:bg-volt/10 hover:text-volt focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
         >
+          <RestartIcon className="h-3 w-3" />
           start over
         </button>
       </header>
@@ -367,25 +378,32 @@ export default function Home() {
                   />
                 </label>
 
-                <div className="flex flex-col gap-2">
+                <div className="group flex flex-col gap-2">
                   <div className="flex flex-wrap gap-3">
                     <button
                       type="button"
                       onClick={() => submit(false)}
                       disabled={busy || !answer.trim()}
-                      className="rounded-lg bg-volt px-5 py-2.5 font-display text-[0.9rem] font-bold text-[#041020] shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_24px_-8px_rgba(0,0,0,0.6)] transition hover:brightness-110 disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
+                      className="inline-flex items-center gap-2 rounded-lg bg-volt px-5 py-2.5 font-display text-[0.9rem] font-bold text-[#041020] shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_24px_-8px_rgba(0,0,0,0.6)] transition hover:brightness-110 disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
                     >
+                      {busy && <Spinner className="h-3.5 w-3.5" />}
                       {busy ? "thinking…" : "Answer"}
                     </button>
                     <button
                       type="button"
                       onClick={() => submit(true)}
                       disabled={busy}
-                      className="rounded-lg px-4 py-2.5 font-mono text-xs text-muted ring-1 ring-inset ring-ink-line-2 transition hover:text-volt hover:ring-volt-dim disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
+                      className="rounded-lg border border-ink-line-2 bg-ink/60 px-4 py-2.5 font-mono text-xs text-paper/80 transition hover:border-volt-dim hover:bg-volt/10 hover:text-volt disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
                     >
                       I don&apos;t know
                     </button>
                   </div>
+                  <p className="flex items-center gap-1.5 text-[0.72rem] text-muted-dim opacity-0 transition-opacity group-hover:opacity-100">
+                    <Kbd>Ctrl</Kbd>
+                    <span>+</span>
+                    <Kbd>Enter</Kbd>
+                    <span>to send</span>
+                  </p>
                   <p className="max-w-[34ch] text-[0.8rem] leading-snug text-muted-dim">
                     Saying you don&apos;t know drops you a rung. It is never
                     counted against you.
@@ -452,8 +470,9 @@ export default function Home() {
             <button
               type="button"
               onClick={restart}
-              className="self-start rounded-lg px-5 py-2.5 font-mono text-xs text-muted ring-1 ring-inset ring-ink-line-2 transition hover:text-volt hover:ring-volt-dim focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
+              className="inline-flex w-fit items-center gap-2 self-start rounded-lg border border-volt-dim/60 bg-volt/10 px-5 py-2.5 font-display text-sm font-bold text-volt transition hover:border-volt hover:bg-volt/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
             >
+              <PlusIcon className="h-3.5 w-3.5" />
               bring another bug
             </button>
           </div>
@@ -487,5 +506,58 @@ function Stat({
         {value}
       </span>
     </div>
+  );
+}
+
+/** Spins on any button whose action is in flight, so "thinking…" isn't just text. */
+function Spinner({ className }: { className?: string }) {
+  return (
+    <svg className={`animate-spin ${className ?? ""}`} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function RestartIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3 12a9 9 0 1 0 3-6.7" />
+      <path d="M3 4v5h5" />
+    </svg>
+  );
+}
+
+function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="rounded border border-ink-line-2 bg-ink px-1.5 py-0.5 font-mono text-[0.7rem] text-paper/80">
+      {children}
+    </kbd>
   );
 }

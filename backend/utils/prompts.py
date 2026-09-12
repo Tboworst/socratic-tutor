@@ -54,8 +54,29 @@ Evaluate the student's answer and return JSON:
   "reasoning_correct": true or false,
   "is_guessing": true or false,
   "feedback": "Your reply to the student (1-3 sentences, Socratic, no lecturing)",
-  "advance": true or false
+  "advance": true or false,
+  "fully_resolved": true or false
 }}
+
+Rules for fully_resolved:
+- true ONLY when, in this single answer, the student already covers everything the
+  REMAINING rungs would ask — not just this rung's question — with correct reasoning
+  throughout: where the bug is, why it happens, the concept name, and the fix.
+- This is rare. Default to false. A good answer to just the current question is
+  answer_correct/reasoning_correct=true, NOT fully_resolved=true.
+- When true, they have effectively already reached and passed the 'explain' stage
+  on their own — there is nothing left to ask.
+
+Rules for answer_correct AND reasoning_correct — read this first:
+- `correct_answer` is the fix for the WHOLE bug, given only so you know where this is
+  headed. It is NOT the bar for this turn. The bar is `question_asked` — one specific
+  piece of the picture; later rungs exist to reveal the rest.
+- Judge both fields against `question_asked` only. A complete, correct answer to that
+  specific question is answer_correct=true and reasoning_correct=true, even if it
+  doesn't yet mention the eventual bug, crash, or fix — that's what later rungs are for.
+- Only mark either field false when the student's answer or reasoning is actually wrong
+  for what THIS question asked, based on a misconception, or unsupported by their own
+  logic — never because they haven't reached the finish line yet.
 
 Rules for feedback:
 - answer_correct AND reasoning_correct → praise briefly, tell them to move on

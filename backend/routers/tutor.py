@@ -209,6 +209,12 @@ def respond(req: RespondRequest):
         feedback = evaluation.get("feedback", "")
         branch = _classify(answer_correct, reasoning_correct)
 
+        # Student already covered every remaining rung correctly in one go —
+        # jump straight to the same terminal path a normal rung-5 pass uses,
+        # instead of marching them through questions they've already answered.
+        if branch == Branch.ADVANCE and evaluation.get("fully_resolved"):
+            branch = Branch.TERMINATE
+
         # Two guesses in a row: stop asking, start helping.
         session["consecutive_guesses"] = (
             session["consecutive_guesses"] + 1 if is_guessing else 0
