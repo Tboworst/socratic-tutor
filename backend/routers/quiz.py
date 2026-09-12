@@ -68,12 +68,15 @@ def generate_quiz(req: QuizGenerateRequest):
                 f"Focus questions on that concept."
             )
 
-    raw = llm.generate_quiz(
-        code=req.code,
-        language=req.language,
-        quiz_type=req.quiz_type.value,
-        context=context,
-    )
+    try:
+        raw = llm.generate_quiz(
+            code=req.code,
+            language=req.language,
+            quiz_type=req.quiz_type.value,
+            context=context,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
     quiz_id = str(uuid.uuid4())
     _quizzes[quiz_id] = {"raw": raw, "quiz_type": req.quiz_type}
