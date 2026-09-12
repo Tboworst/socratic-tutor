@@ -21,6 +21,7 @@ import {
   STAGE_ORDER,
   type RespondResponse,
 } from "@/lib/api";
+import ReactMarkdown from "react-markdown";
 
 type Phase = "setup" | "tutoring" | "done";
 
@@ -131,7 +132,11 @@ export default function Home() {
     setError(null);
     setProviderBusy(false);
     try {
-      const r = await respond(sessionId, iDontKnow ? "" : answer.trim(), iDontKnow);
+      const r = await respond(
+        sessionId,
+        iDontKnow ? "" : answer.trim(),
+        iDontKnow,
+      );
       setLast(r);
       setStageIndex(r.stage_index);
       setRunThis(r.run_this);
@@ -152,7 +157,9 @@ export default function Home() {
           "This session is gone — the tutor server restarted, and sessions live in memory rather than a database. Your code is still here.",
         );
       } else {
-        setError(e instanceof Error ? e.message : "Could not send your answer.");
+        setError(
+          e instanceof Error ? e.message : "Could not send your answer.",
+        );
       }
     } finally {
       setBusy(false);
@@ -230,8 +237,8 @@ export default function Home() {
           >
             <ConsolePane output={output} />
             <p className="max-w-[62ch] text-[0.88rem] leading-relaxed text-muted">
-              Rung diagnoses from what your program actually does, not from what the
-              code looks like. Until it has run, there is nothing to go on.
+              Rung diagnoses from what your program actually does, not from what
+              the code looks like. Until it has run, there is nothing to go on.
             </p>
           </Step>
 
@@ -244,7 +251,9 @@ export default function Home() {
             <div className="grid gap-4 lg:grid-cols-2">
               <WantedPane expected={expected} onChange={setExpected} />
               <label className="flex flex-col gap-2">
-                <span className="eyebrow text-muted-dim">What looks wrong to you?</span>
+                <span className="eyebrow text-muted-dim">
+                  What looks wrong to you?
+                </span>
                 <textarea
                   id="student-question"
                   value={question}
@@ -284,7 +293,9 @@ export default function Home() {
           <span className="font-display text-2xl font-extrabold tracking-[-0.03em]">
             Rung
           </span>
-          <span className="eyebrow text-muted-dim">a tutor that never answers</span>
+          <span className="eyebrow text-muted-dim">
+            a tutor that never answers
+          </span>
         </div>
         <button
           type="button"
@@ -327,7 +338,10 @@ export default function Home() {
       <section className="mt-9 border-t border-ink-line pt-8">
         {phase === "tutoring" ? (
           <div className="flex flex-col gap-6">
-            <LadderProgress stageIndex={stageIndex} descents={last?.descents ?? 0} />
+            <LadderProgress
+              stageIndex={stageIndex}
+              descents={last?.descents ?? 0}
+            />
 
             {last && (
               <BranchBanner
@@ -349,7 +363,8 @@ export default function Home() {
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit(false);
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey))
+                      submit(false);
                   }}
                   rows={3}
                   placeholder="Say what you think, even if you're not sure. Ctrl + Enter to send."
@@ -377,8 +392,8 @@ export default function Home() {
                   </button>
                 </div>
                 <p className="max-w-[34ch] text-[0.8rem] leading-snug text-muted-dim">
-                  Saying you don&apos;t know drops you a rung. It is never counted
-                  against you.
+                  Saying you don&apos;t know drops you a rung. It is never
+                  counted against you.
                 </p>
               </div>
             </div>
@@ -389,7 +404,10 @@ export default function Home() {
               <span className="text-muted-dim">//</span> Session report
             </span>
             <div className="grid gap-3 sm:grid-cols-3">
-              <Stat label="Rungs used" value={`${stageIndex + 1} / ${STAGE_ORDER.length}`} />
+              <Stat
+                label="Rungs used"
+                value={`${stageIndex + 1} / ${STAGE_ORDER.length}`}
+              />
               <Stat label="Steps of help" value={String(last?.descents ?? 0)} />
               <Stat
                 label="Reasoning held up"
@@ -397,9 +415,37 @@ export default function Home() {
                 tone={last?.reasoning_correct ? "good" : "warn"}
               />
             </div>
-            <pre className="max-w-[74ch] whitespace-pre-wrap border-l-2 border-volt-dim pl-5 font-sans text-[0.97rem] leading-relaxed text-paper/90">
-              {summary || "No summary returned."}
-            </pre>
+            <div className="max-w-[74ch] border-l-2 border-volt-dim pl-5 text-[0.97rem] leading-relaxed text-paper/90">
+              <ReactMarkdown
+                components={{
+                  p: ({ children }) => (
+                    <p className="mb-4 last:mb-0">{children}</p>
+                  ),
+                  strong: ({ children }) => (
+                    <strong className="font-semibold text-white">
+                      {children}
+                    </strong>
+                  ),
+                  em: ({ children }) => (
+                    <em className="italic text-paper/90">{children}</em>
+                  ),
+                  code: ({ children }) => (
+                    <code className="rounded bg-ink-sunk px-1.5 py-0.5 font-mono text-[0.85em] text-volt">
+                      {children}
+                    </code>
+                  ),
+                  ul: ({ children }) => (
+                    <ul className="mb-4 list-disc pl-5">{children}</ul>
+                  ),
+                  ol: ({ children }) => (
+                    <ol className="mb-4 list-decimal pl-5">{children}</ol>
+                  ),
+                  li: ({ children }) => <li className="mb-1">{children}</li>,
+                }}
+              >
+                {summary || "No summary returned."}
+              </ReactMarkdown>
+            </div>
             <Quiz code={code} sessionId={sessionId} />
 
             <button
@@ -426,11 +472,17 @@ function Stat({
   tone?: "good" | "warn";
 }) {
   const color =
-    tone === "good" ? "text-good" : tone === "warn" ? "text-warn" : "text-paper";
+    tone === "good"
+      ? "text-good"
+      : tone === "warn"
+        ? "text-warn"
+        : "text-paper";
   return (
     <div className="border-t border-ink-line-2 pt-3">
       <span className="eyebrow text-muted-dim">{label}</span>
-      <span className={`mt-1.5 block font-display text-2xl font-bold tabular-nums ${color}`}>
+      <span
+        className={`mt-1.5 block font-display text-2xl font-bold tabular-nums ${color}`}
+      >
         {value}
       </span>
     </div>
