@@ -32,6 +32,16 @@ def provider_unavailable(_request: Request, exc: ProviderUnavailable):
     return JSONResponse(status_code=503, content={"detail": str(exc)})
 
 
+@app.exception_handler(Exception)
+def unhandled(_request: Request, exc: Exception):
+    """Catch-all so every error returns JSON with CORS headers instead of a
+    plain-text traceback that the browser blocks cross-origin."""
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"{type(exc).__name__}: {exc}"},
+    )
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
