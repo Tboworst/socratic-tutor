@@ -5,7 +5,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import tutor, execute
+from routers import tutor, execute, quiz, challenge
 
 app = FastAPI(title="Socratic Tutor API", version="0.1.0")
 
@@ -18,6 +18,8 @@ app.add_middleware(
 
 app.include_router(tutor.router, prefix="/api/tutor", tags=["tutor"])
 app.include_router(execute.router, prefix="/api/execute", tags=["execute"])
+app.include_router(quiz.router, prefix="/api/quiz", tags=["quiz"])
+app.include_router(challenge.router, prefix="/api/challenge", tags=["challenge"])
 
 
 @app.get("/health")

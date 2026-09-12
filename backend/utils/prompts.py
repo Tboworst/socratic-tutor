@@ -66,6 +66,141 @@ Rules for advance:
 - At 'explain' stage, advance=true after student demonstrates understanding OR after attempt >= 2\
 """
 
+# ── Quiz ────────────────────────────────────────────────────────────────────
+
+QUIZ_SYSTEM = """\
+You are generating a quiz to test a student's understanding of a code snippet.
+Make questions challenging but fair. Respond ONLY with valid JSON.\
+"""
+
+QUIZ_PROMPT_MC = """\
+Generate a multiple-choice quiz (3 questions) for this {language} code.
+Test: what specific lines output, what concepts are used, what would break if changed.
+
+Code:
+```{language}
+{code}
+```
+
+{context}
+
+Return JSON:
+{{
+  "questions": [
+    {{
+      "id": "q1",
+      "prompt": "What does this code output when run?",
+      "options": [
+        {{"label": "A", "text": "5"}},
+        {{"label": "B", "text": "'5'"}},
+        {{"label": "C", "text": "Error"}},
+        {{"label": "D", "text": "None"}}
+      ],
+      "correct_label": "B",
+      "explanation": "Because a='5' is a string, not an integer..."
+    }}
+  ]
+}}\
+"""
+
+QUIZ_PROMPT_CODE_FIX = """\
+Generate a code-fix quiz (2 questions) based on this {language} code.
+Each question shows a slightly broken version of a snippet and asks the student to fix it.
+
+Original code (for reference):
+```{language}
+{code}
+```
+
+{context}
+
+Return JSON:
+{{
+  "questions": [
+    {{
+      "id": "q1",
+      "prompt": "Fix the bug in this code so it works correctly:",
+      "buggy_code": "...",
+      "correct_code": "...",
+      "hint": "Think about the data type being compared",
+      "explanation": "The issue is... because..."
+    }}
+  ]
+}}\
+"""
+
+# ── Challenge ────────────────────────────────────────────────────────────────
+
+CHALLENGE_SYSTEM = """\
+You are creating a realistic coding challenge for interview preparation.
+The code must look like something a developer actually wrote — not obviously broken.
+Respond ONLY with valid JSON.\
+"""
+
+CHALLENGE_PROMPT = """\
+Generate a {language} code snippet (15-30 lines) with exactly {num_bugs} intentional bug(s).
+Difficulty: {difficulty}
+
+Bug variety rules:
+- easy: one type issue or simple logic error
+- medium: mix of logic, type, or off-by-one errors
+- hard: subtle scope, mutation, or edge-case errors
+
+Return JSON:
+{{
+  "buggy_code": "the full code with bugs inserted",
+  "instructions": "Find and fix the {num_bugs} bug(s) in this {language} code.",
+  "bugs": [
+    {{
+      "id": "bug1",
+      "type": "type coercion",
+      "line_hint": "around line 4",
+      "description": "Internal description — NOT shown to the student"
+    }}
+  ]
+}}\
+"""
+
+CHALLENGE_EVALUATE_SYSTEM = """\
+You are evaluating a student's attempt to fix bugs in code.
+Be precise: a bug is only "fixed" if the student's code actually resolves that specific issue.
+Respond ONLY with valid JSON.\
+"""
+
+CHALLENGE_EVALUATE_PROMPT = """\
+Original buggy code:
+```{language}
+{buggy_code}
+```
+
+Known bugs (internal, not shown to student):
+{bugs_description}
+
+Student's submitted fix:
+```{language}
+{fixed_code}
+```
+
+For each known bug, determine whether the student's fix resolves it.
+
+Return JSON:
+{{
+  "results": [
+    {{
+      "bug_id": "bug1",
+      "fixed": true,
+      "explanation": "Student changed X to Y, which correctly resolves the type coercion issue."
+    }}
+  ],
+  "overall_feedback": "2-3 sentences: honest, encouraging, note what they got right and what they missed.",
+  "score": 0
+}}
+
+Set score = number of bugs where fixed=true.\
+"""
+
+# ── Summary ──────────────────────────────────────────────────────────────────
+
 SUMMARY_SYSTEM = """\
 You are wrapping up a Socratic tutoring session. Write a final note to the student.
 Be warm, honest, and educational.\
