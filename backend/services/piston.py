@@ -21,11 +21,19 @@ LANGUAGE_MAP = {
 }
 
 
+# Runtimes never change during a run. Fetching them on every execute call
+# doubled our exposure to Piston's rate limit for nothing.
+_runtimes_cache: list[dict] | None = None
+
+
 async def get_runtimes() -> list[dict]:
-    async with httpx.AsyncClient() as client:
-        r = await client.get(f"{PISTON_URL}/runtimes")
-        r.raise_for_status()
-        return r.json()
+    global _runtimes_cache
+    if _runtimes_cache is None:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(f"{PISTON_URL}/runtimes")
+            r.raise_for_status()
+            _runtimes_cache = r.json()
+    return _runtimes_cache
 
 
 async def execute(code: str, language: str, stdin: str = "") -> dict:

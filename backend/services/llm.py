@@ -93,6 +93,21 @@ def _parse_json(raw: str) -> dict:
     return json.loads(raw.strip())
 
 
+def _ask_json(system: str, user: str) -> dict:
+    """
+    Ask for JSON, and retry ONCE with a stricter instruction if the model
+    returns prose. A malformed response used to 500 the whole request --
+    the fastest way to lose a live demo.
+    """
+    raw = _ask(system, user)
+    try:
+        return _parse_json(raw)
+    except (json.JSONDecodeError, IndexError):
+        retry_system = system + "\n\nCRITICAL: output raw JSON only. No prose, no markdown fences."
+        raw = _ask(retry_system, user)
+        return _parse_json(raw)
+
+
 # ── Public functions (identical interface regardless of provider) ─────────────
 
 def diagnose(code: str, language: str, question: str) -> dict:
@@ -101,7 +116,7 @@ def diagnose(code: str, language: str, question: str) -> dict:
         code=code,
         question=question or "I'm not sure what's wrong.",
     )
-    return _parse_json(_ask(DIAGNOSIS_SYSTEM, prompt))
+    return _ask_json(DIAGNOSIS_SYSTEM, prompt)
 
 
 def evaluate(
@@ -125,7 +140,7 @@ def evaluate(
         user_answer=user_answer,
         attempt=attempt,
     )
-    return _parse_json(_ask(EVALUATOR_SYSTEM, prompt))
+    return _ask_json(EVALUATOR_SYSTEM, prompt)
 
 
 def generate_quiz(*, code: str, language: str, quiz_type: str, context: str = "") -> dict:
@@ -133,7 +148,7 @@ def generate_quiz(*, code: str, language: str, quiz_type: str, context: str = ""
         prompt = QUIZ_PROMPT_MC.format(language=language, code=code, context=context)
     else:
         prompt = QUIZ_PROMPT_CODE_FIX.format(language=language, code=code, context=context)
-    return _parse_json(_ask(QUIZ_SYSTEM, prompt))
+    return _ask_json(QUIZ_SYSTEM, prompt)
 
 
 def generate_challenge(*, language: str, difficulty: str, num_bugs: int) -> dict:
@@ -142,7 +157,7 @@ def generate_challenge(*, language: str, difficulty: str, num_bugs: int) -> dict
         difficulty=difficulty,
         num_bugs=num_bugs,
     )
-    return _parse_json(_ask(CHALLENGE_SYSTEM, prompt))
+    return _ask_json(CHALLENGE_SYSTEM, prompt)
 
 
 def evaluate_challenge(
@@ -162,7 +177,7 @@ def evaluate_challenge(
         bugs_description=bugs_description,
         fixed_code=fixed_code,
     )
-    return _parse_json(_ask(CHALLENGE_EVALUATE_SYSTEM, prompt))
+    return _ask_json(CHALLENGE_EVALUATE_SYSTEM, prompt)
 
 
 def generate_summary(*, concept_gap: str, correct_answer: str, history: list[dict]) -> str:

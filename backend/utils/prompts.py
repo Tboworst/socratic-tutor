@@ -1,7 +1,8 @@
 DIAGNOSIS_SYSTEM = """\
 You are an expert programming tutor using the Socratic method.
 Analyze code to find bugs or concept gaps, then plan a guided discovery path for the student.
-Never give away the answer directly. Respond ONLY with valid JSON.\
+Never give away the answer directly. Write all student-facing text in English.
+Respond ONLY with valid JSON, no markdown fences.\
 """
 
 DIAGNOSIS_PROMPT = """\
@@ -22,7 +23,8 @@ Return JSON with this exact shape:
   "hints": {{
     "orientation": "A question that makes them point to WHERE in the code the issue lives (no answer, just location)",
     "localization": "A question about WHAT that specific part of the code means or evaluates to",
-    "observation": "Ask them to RUN the code and describe what output they see",
+    "observation": "Ask them to RUN one specific snippet and describe the output they see",
+    "run_this": "the exact one-line snippet for the observation stage, e.g. print(type(quantity))",
     "naming": "Name the concept involved, then ask them to connect it to what they observed",
     "explain": "Ask them to explain the fix in their own words, then suggest trying it with a different input"
   }}
@@ -50,6 +52,7 @@ Evaluate the student's answer and return JSON:
 {{
   "answer_correct": true or false,
   "reasoning_correct": true or false,
+  "is_guessing": true or false,
   "feedback": "Your reply to the student (1-3 sentences, Socratic, no lecturing)",
   "advance": true or false
 }}
@@ -61,9 +64,19 @@ Rules for feedback:
 - both wrong → redirect gently with a small hint pointing closer to the answer, do NOT advance
 - At 'explain' stage with attempt >= 2 → you MAY reveal the correct answer and explain why
 
+Rules for is_guessing:
+- true when the answer is empty, off-topic, a restatement of the question, or a blind guess
+  with no reasoning at all ("idk", "the second one?", "a syntax error I think")
+- false whenever the student shows ANY real reasoning, even if wrong
+
 Rules for advance:
 - Set advance=true only when answer_correct AND reasoning_correct
-- At 'explain' stage, advance=true after student demonstrates understanding OR after attempt >= 2\
+- At 'explain' stage, advance=true after student demonstrates understanding OR after attempt >= 2
+
+Hard constraints:
+- Write ALL student-facing text in English, regardless of the language of the code or its comments.
+- Never state the fix, the corrected line, or the concept name before the 'naming' stage.
+- Never repeat a hint you have already given; the student has seen it.\
 """
 
 # ── Quiz ────────────────────────────────────────────────────────────────────
