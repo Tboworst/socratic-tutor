@@ -5,7 +5,7 @@ from models.schemas import (
     RespondRequest, RespondResponse,
     SocraticStage, STAGE_ORDER,
 )
-from services import claude
+from services import llm
 
 router = APIRouter()
 
@@ -28,7 +28,7 @@ def diagnose(req: DiagnoseRequest):
     The AI diagnoses the bug/concept gap and plans the 5-stage hint ladder.
     Returns the first Socratic question (orientation stage).
     """
-    diagnosis = claude.diagnose(
+    diagnosis = llm.diagnose(
         code=req.code,
         language=req.language,
         question=req.question or "",
@@ -84,7 +84,7 @@ def respond(req: RespondRequest):
     )
 
     # Evaluate
-    evaluation = claude.evaluate(
+    evaluation = llm.evaluate(
         language=session["language"],
         bug_type=diag["bug_type"],
         concept_gap=diag["concept_gap"],
@@ -125,7 +125,7 @@ def respond(req: RespondRequest):
         session["history"].append(
             {"role": "bot", "stage": stage.value, "content": feedback}
         )
-        summary = claude.generate_summary(
+        summary = llm.generate_summary(
             concept_gap=diag["concept_gap"],
             correct_answer=diag["correct_answer"],
             history=session["history"],

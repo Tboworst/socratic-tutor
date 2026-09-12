@@ -5,7 +5,7 @@ from models.schemas import (
     ChallengeSubmitRequest, ChallengeSubmitResponse,
     BugResult,
 )
-from services import claude
+from services import llm
 
 router = APIRouter()
 
@@ -23,7 +23,7 @@ def generate_challenge(req: ChallengeGenerateRequest):
     if not 1 <= req.num_bugs <= 4:
         raise HTTPException(status_code=422, detail="num_bugs must be between 1 and 4")
 
-    raw = claude.generate_challenge(
+    raw = llm.generate_challenge(
         language=req.language,
         difficulty=req.difficulty.value,
         num_bugs=req.num_bugs,
@@ -56,7 +56,7 @@ def submit_challenge(req: ChallengeSubmitRequest):
     if not challenge:
         raise HTTPException(status_code=404, detail="Challenge not found")
 
-    evaluation = claude.evaluate_challenge(
+    evaluation = llm.evaluate_challenge(
         language=challenge["language"],
         buggy_code=challenge["buggy_code"],
         bugs=challenge["bugs"],

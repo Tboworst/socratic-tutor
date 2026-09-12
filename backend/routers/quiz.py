@@ -5,7 +5,7 @@ from models.schemas import (
     MCQuestion, MCOption, CodeFixQuestion,
     QuizType,
 )
-from services import claude
+from services import llm
 
 router = APIRouter()
 
@@ -68,7 +68,7 @@ def generate_quiz(req: QuizGenerateRequest):
                 f"Focus questions on that concept."
             )
 
-    raw = claude.generate_quiz(
+    raw = llm.generate_quiz(
         code=req.code,
         language=req.language,
         quiz_type=req.quiz_type.value,
