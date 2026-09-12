@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+
+html, body {
+  background: #07080A;
+  color: #E8EBF0;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* CodeMirror sits on our own surface, not its default white */
+.cm-editor { background: #0B0D12 !important; font-size: 13px; }
+.cm-editor.cm-focused { outline: none !important; }
+.cm-gutters { background: #0B0D12 !important; border-right: 1px solid #1E232C !important; color: #616A79 !important; }
+.cm-activeLine, .cm-activeLineGutter { background: rgba(10,132,255,0.06) !important; }
+.cm-content { caret-color: #0A84FF; }
+
+.eyebrow {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem; font-weight: 500;
+  letter-spacing: 0.16em; text-transform: uppercase;
+}
