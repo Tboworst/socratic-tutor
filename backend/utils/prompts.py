@@ -121,24 +121,14 @@ Rules:
     {{
       "id": "q1",
       "prompt": "question text here",
-      "options": [
-        {{"label": "A", "text": "option text"}},
-        {{"label": "B", "text": "option text"}},
-        {{"label": "C", "text": "option text"}},
-        {{"label": "D", "text": "option text"}}
-      ],
+      "options": {{"A": "option text", "B": "option text", "C": "option text", "D": "option text"}},
       "correct_label": "A",
       "explanation": "one sentence explanation"
     }},
     {{
       "id": "q2",
       "prompt": "question text here",
-      "options": [
-        {{"label": "A", "text": "option text"}},
-        {{"label": "B", "text": "option text"}},
-        {{"label": "C", "text": "option text"}},
-        {{"label": "D", "text": "option text"}}
-      ],
+      "options": {{"A": "option text", "B": "option text", "C": "option text", "D": "option text"}},
       "correct_label": "B",
       "explanation": "one sentence explanation"
     }}

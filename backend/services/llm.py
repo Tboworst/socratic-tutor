@@ -8,6 +8,7 @@ Set LLM_PROVIDER in .env to switch backends:
 """
 import json
 import os
+import re
 import time
 
 from utils.prompts import (
@@ -155,9 +156,14 @@ def _ask_once(system: str, user: str, max_tokens: int | None = None, json_mode: 
     return text
 
 
+def _repair_json(raw: str) -> str:
+    """Fix the one consistent model mistake: unquoted single-char keys like D: -> "D":
+    This model (qwen) reliably drops the quotes on the last option key."""
+    return re.sub(r'(?<=[{,])\s*([A-Za-z_]\w*)\s*:', lambda m: f' "{m.group(1)}":', raw)
+
+
 def _parse_json(raw: str) -> dict:
-    """Strip fences, then parse. Falls back to the span between { and }, since
-    weaker models like to wrap the object in a sentence."""
+    """Strip fences, repair common model mistakes, then parse."""
     if not isinstance(raw, str) or not raw.strip():
         raise ValueError(f"expected a JSON string, got {raw!r}")
 
@@ -173,10 +179,16 @@ def _parse_json(raw: str) -> dict:
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
+        # Try repairing unquoted keys first
+        try:
+            return json.loads(_repair_json(raw))
+        except json.JSONDecodeError:
+            pass
+        # Last resort: extract outermost { ... }
         start, end = raw.find("{"), raw.rfind("}")
         if start == -1 or end <= start:
             raise
-        return json.loads(raw[start : end + 1])
+        return json.loads(_repair_json(raw[start : end + 1]))
 
 
 def _ask_json(system: str, user: str, max_tokens: int | None = None) -> dict:

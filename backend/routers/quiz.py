@@ -19,7 +19,14 @@ def _build_response(quiz_id: str, quiz_type: QuizType, raw: dict) -> QuizGenerat
             MCQuestion(
                 id=q["id"],
                 prompt=q["prompt"],
-                options=[MCOption(label=o["label"], text=o["text"]) for o in q["options"]],
+                options=[
+                    MCOption(label=k, text=v)
+                    for k, v in (
+                        q["options"].items()
+                        if isinstance(q["options"], dict)
+                        else ((o["label"], o["text"]) for o in q["options"])
+                    )
+                ],
                 correct_label=q["correct_label"],
                 explanation=q["explanation"],
             )
