@@ -73,17 +73,17 @@ def _get_openai_client():
 
 # ── Core dispatcher ──────────────────────────────────────────────────────────
 
-def _ask(system: str, user: str) -> str:
+def _ask(system: str, user: str, max_tokens: int | None = None) -> str:
     """Single-turn call, retried once on a transient provider error."""
     try:
-        return _ask_once(system, user)
+        return _ask_once(system, user, max_tokens)
     except Exception as e:
         status = getattr(e, "status_code", None)
         if status not in _TRANSIENT:
             raise
-        time.sleep(2)
+        time.sleep(0.5)
         try:
-            return _ask_once(system, user)
+            return _ask_once(system, user, max_tokens)
         except Exception as e2:
             status = getattr(e2, "status_code", status)
             raise ProviderUnavailable(
@@ -94,13 +94,15 @@ def _ask(system: str, user: str) -> str:
             ) from e2
 
 
-def _ask_once(system: str, user: str) -> str:
+def _ask_once(system: str, user: str, max_tokens: int | None = None) -> str:
     """One attempt, routed to the configured provider."""
+    tokens = max_tokens or int(os.getenv("LLM_MAX_TOKENS", "2048"))
+
     if _PROVIDER == "claude":
         client = _get_claude_client()
         msg = client.messages.create(
             model=os.getenv("CLAUDE_MODEL", "claude-sonnet-5"),
-            max_tokens=1024,
+            max_tokens=tokens,
             system=system,
             messages=[{"role": "user", "content": user}],
         )
@@ -118,7 +120,7 @@ def _ask_once(system: str, user: str) -> str:
 
     response = client.chat.completions.create(
         model=model,
-        max_tokens=int(os.getenv("LLM_MAX_TOKENS", "2048")),
+        max_tokens=tokens,
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -173,14 +175,14 @@ def _parse_json(raw: str) -> dict:
         return json.loads(raw[start : end + 1])
 
 
-def _ask_json(system: str, user: str) -> dict:
+def _ask_json(system: str, user: str, max_tokens: int | None = None) -> dict:
     """Ask for JSON; retry once with a stricter instruction if it returns prose."""
-    raw = _ask(system, user)
+    raw = _ask(system, user, max_tokens)
     try:
         return _parse_json(raw)
     except (json.JSONDecodeError, IndexError, ValueError):
         retry_system = system + "\n\nCRITICAL: output raw JSON only. No prose, no markdown fences."
-        raw = _ask(retry_system, user)
+        raw = _ask(retry_system, user, max_tokens)
         return _parse_json(raw)
 
 
@@ -192,7 +194,7 @@ def diagnose(code: str, language: str, question: str) -> dict:
         code=code,
         question=question or "I'm not sure what's wrong.",
     )
-    return _ask_json(DIAGNOSIS_SYSTEM, prompt)
+    return _ask_json(DIAGNOSIS_SYSTEM, prompt, max_tokens=900)
 
 
 def evaluate(
@@ -218,7 +220,7 @@ def evaluate(
         user_answer=user_answer,
         attempt=attempt,
     )
-    return _ask_json(EVALUATOR_SYSTEM, prompt)
+    return _ask_json(EVALUATOR_SYSTEM, prompt, max_tokens=350)
 
 
 def generate_quiz(*, code: str, language: str, quiz_type: str, context: str = "") -> dict:
@@ -268,4 +270,4 @@ def generate_summary(*, concept_gap: str, correct_answer: str, history: list[dic
         correct_answer=correct_answer,
         history=history_text,
     )
-    return _ask(SUMMARY_SYSTEM, prompt)
+    return _ask(SUMMARY_SYSTEM, prompt, max_tokens=500)

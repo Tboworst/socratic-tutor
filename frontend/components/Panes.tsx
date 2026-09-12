@@ -2,6 +2,10 @@
 
 import dynamic from "next/dynamic";
 import { python } from "@codemirror/lang-python";
+import { javascript } from "@codemirror/lang-javascript";
+import { java } from "@codemirror/lang-java";
+import { cpp } from "@codemirror/lang-cpp";
+import type { Extension } from "@codemirror/state";
 
 // CodeMirror touches window on import, so keep it off the server render.
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), {
@@ -9,16 +13,33 @@ const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), {
   loading: () => <div className="h-[300px] animate-pulse bg-ink-sunk" />,
 });
 
+function langExtension(language: string): Extension[] {
+  switch (language) {
+    case "javascript": return [javascript()];
+    case "java":       return [java()];
+    case "cpp":        return [cpp()];
+    default:           return [python()];
+  }
+}
+
 /**
  * The editor. Read-only while the tutor is asking, so the code can't change out
  * from under a diagnosis made from it, and open at the last rung so the student
  * can try the fix. The observation rung runs its snippet via RunThisPane.
  */
+const FILE_LABEL: Record<string, string> = {
+  python: "main.py",
+  javascript: "main.js",
+  java: "Main.java",
+  cpp: "main.cpp",
+};
+
 export function EditorPane({
   code,
   onChange,
   running,
   onRun,
+  language = "python",
   editable = true,
   lockNote,
   openNote,
@@ -29,17 +50,19 @@ export function EditorPane({
   onChange: (v: string) => void;
   running: boolean;
   onRun: () => void;
+  language?: string;
   editable?: boolean;
-  lockNote?: string;  // shown while read-only, to say why
-  openNote?: string;  // shown once it opens
+  lockNote?: string;
+  openNote?: string;
   drifted?: boolean;
   height?: string;
 }) {
+  const fileLabel = FILE_LABEL[language] ?? "main.txt";
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-baseline gap-3">
-          <span className="eyebrow text-muted-dim">main.py</span>
+          <span className="eyebrow text-muted-dim">{fileLabel}</span>
           {!editable && lockNote && (
             <span className="eyebrow text-muted-dim">{lockNote}</span>
           )}
@@ -62,7 +85,7 @@ export function EditorPane({
         <CodeMirror
           value={code}
           onChange={onChange}
-          extensions={[python()]}
+          extensions={langExtension(language)}
           editable={editable}
           theme="dark"
           basicSetup={{ lineNumbers: true, foldGutter: false, highlightActiveLine: true }}

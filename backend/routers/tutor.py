@@ -9,6 +9,7 @@
 # --------------------------------------------------------------------------
 
 import json
+import threading
 import uuid
 from pathlib import Path
 
@@ -38,10 +39,12 @@ _STORE = Path(__file__).resolve().parent.parent / ".sessions.json"
 
 def _persist() -> None:
     """Mirror sessions to one JSON file so a restart doesn't discard them."""
-    try:
-        _STORE.write_text(json.dumps(_sessions, default=str), encoding="utf-8")
-    except OSError:
-        pass  # persistence is a convenience; never fail a request over it
+    def _write():
+        try:
+            _STORE.write_text(json.dumps(_sessions, default=str), encoding="utf-8")
+        except OSError:
+            pass
+    threading.Thread(target=_write, daemon=True).start()
 
 
 def _restore() -> None:

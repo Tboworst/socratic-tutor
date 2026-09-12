@@ -26,6 +26,7 @@ import ReactMarkdown from "react-markdown";
 type Phase = "setup" | "tutoring" | "done";
 
 export default function Home() {
+  const [language, setLanguage] = useState("python");
   const [code, setCode] = useState(STARTER);
   const [question, setQuestion] = useState("");
   const [expected, setExpected] = useState("");
@@ -48,7 +49,9 @@ export default function Home() {
   const [providerBusy, setProviderBusy] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
 
+  const canExecute = language === "python";
   const hasRun = output !== null;
+  const readyToStart = canExecute ? hasRun : code.trim().length > 0 && code.trim() !== STARTER.trim();
   const drifted = phase === "tutoring" && code.trim() !== diagnosedCode.trim();
 
   const atExplain = stageIndex === STAGE_ORDER.length - 1;
@@ -95,7 +98,7 @@ export default function Home() {
     setError(null);
     setProviderBusy(false);
     try {
-      const d = await diagnose(code, fullQuestion());
+      const d = await diagnose(code, fullQuestion(), language);
       setSessionId(d.session_id);
       setDiagnosedCode(code);
       setStageIndex(d.stage_index);
@@ -201,10 +204,27 @@ export default function Home() {
           <Step
             n={1}
             title="Paste the code that is misbehaving"
-            hint="Python, and keep it small"
+            hint="keep it small"
           >
+            <div className="flex gap-2 flex-wrap">
+              {(["python", "javascript", "java", "cpp"] as const).map((lang) => (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => { setLanguage(lang); setOutput(null); }}
+                  className={`rounded px-3 py-1 font-mono text-xs ring-1 ring-inset transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt ${
+                    language === lang
+                      ? "bg-volt/20 text-volt ring-volt-dim"
+                      : "text-muted ring-ink-line-2 hover:text-paper hover:ring-paper/30"
+                  }`}
+                >
+                  {lang === "cpp" ? "C++" : lang.charAt(0).toUpperCase() + lang.slice(1)}
+                </button>
+              ))}
+            </div>
             <EditorPane
               code={code}
+              language={language}
               onChange={(v) => {
                 setCode(v);
                 if (v !== outputFor) setOutput(null);
@@ -217,15 +237,32 @@ export default function Home() {
           <Step
             n={2}
             title="Run it and look"
-            hint={hasRun ? undefined : "press Run above"}
+            hint={
+              !canExecute
+                ? "execution not available for this language — skip to step 3"
+                : hasRun
+                ? undefined
+                : "press Run above"
+            }
             locked={!code.trim() || code.trim() === STARTER.trim()}
             done={hasRun}
           >
-            <ConsolePane output={output} />
-            <p className="max-w-[62ch] text-[0.88rem] leading-relaxed text-muted">
-              Rung diagnoses from what your program actually does, not from what
-              the code looks like. Until it has run, there is nothing to go on.
-            </p>
+            {canExecute ? (
+              <>
+                <ConsolePane output={output} />
+                <p className="max-w-[62ch] text-[0.88rem] leading-relaxed text-muted">
+                  Rung diagnoses from what your program actually does, not from
+                  what the code looks like. Until it has run, there is nothing
+                  to go on.
+                </p>
+              </>
+            ) : (
+              <p className="max-w-[62ch] text-[0.88rem] leading-relaxed text-muted">
+                In-browser execution is only available for Python right now. The
+                tutor can still walk through your {language} code — just skip to
+                step 3.
+              </p>
+            )}
           </Step>
 
           <Step
@@ -255,7 +292,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={handleStart}
-                disabled={busy || !hasRun}
+                disabled={busy || !readyToStart}
                 className="rounded-lg bg-volt px-6 py-3 font-display text-[0.95rem] font-bold text-[#041020] shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_24px_-8px_rgba(0,0,0,0.6)] transition hover:brightness-110 disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
               >
                 {busy ? "Reading your code…" : "Start the five questions"}
@@ -297,6 +334,7 @@ export default function Home() {
       <section className="mt-7 grid gap-4 lg:grid-cols-[1.5fr_1fr]">
         <EditorPane
           code={code}
+          language={language}
           onChange={(v) => {
             setCode(v);
             if (v !== outputFor) setOutput(null);
